@@ -8,6 +8,7 @@ if (!require('dplyr')) install.packages("dplyr")
 if (!require('shinydashboard')) install.packages("shinydashboard")
 if (!require('ggpubr')) install.packages("ggpubr")
 if (!require('DT')) install.packages("DT")
+if (!require('questionr')) install.packages("questionr")
 
 MAXMOD<-12
 shinyServer(function(input, output,session) {
@@ -101,7 +102,7 @@ shinyServer(function(input, output,session) {
   ##show data set
   output$head <- DT::renderDataTable({
     data_used()
-  },options = list(lengthMenu = c(10), pageLength = 10))
+  },options = list(dom='tipr',scrollX=TRUE),rownames=FALSE)
   
   ##Filter data
   output$lengthInt<-renderUI({
@@ -382,7 +383,7 @@ shinyServer(function(input, output,session) {
       d
     }
     
-  }, options = list(scrollX = TRUE,fixedColumns = list(leftColumns = 1),rownames= FALSE))
+  }, options = list(dom='tipr',scrollX = TRUE,fixedColumns = list(leftColumns = 1),rownames= FALSE))
   
   output$summaryStatsByGroup<-DT::renderDataTable({
     validate(
@@ -431,7 +432,7 @@ shinyServer(function(input, output,session) {
       d
       
     }
-  }, options = list(scrollX = TRUE,fixedColumns = list(leftColumns = 1),rownames= FALSE))
+  }, options = list(dom='tipr',scrollX = TRUE,fixedColumns = list(leftColumns = 1),rownames= FALSE))
   
   output$nJumpTable<-DT::renderDataTable({
     t<-table(as.vector(nJump()))
@@ -441,7 +442,7 @@ shinyServer(function(input, output,session) {
     colnames(d)<-name
     row.names(d)<-c("Frequencies","proportions")
     d
-  },options = list(scrollX = TRUE))
+  },options = list(dom='tipr',scrollX = TRUE))
   
   ##Time spnet by state by groupe
   observe({
@@ -476,7 +477,7 @@ shinyServer(function(input, output,session) {
       d
       output[[paste("timeSpentGroup", par, sep = "_")]] <- DT::renderDataTable({
         d
-      },options = list(scrollX = TRUE,fixedColumns = list(leftColumns = 1),lengthMenu = c(2,6,12), pageLength = 2))
+      },options = list(dom='tipr',scrollX = TRUE,fixedColumns = list(leftColumns = 1),lengthMenu = c(2,6,12), pageLength = 2))
     })
   })
   
@@ -526,7 +527,7 @@ shinyServer(function(input, output,session) {
     row.names(d)<-mod
     d
     
-  },options = list(scrollX = TRUE,fixedColumns = list(leftColumns = 1)))
+  },options = list(dom='tipr',scrollX = TRUE,fixedColumns = list(leftColumns = 1)))
   
   output$nJumpTableGroupFreq<-DT::renderDataTable({
     req(input$groupVariableStatistics)
@@ -547,7 +548,7 @@ shinyServer(function(input, output,session) {
     col_som<-apply(t,2,sum)
     res<-rbind.data.frame(cbind.data.frame(t,total=row_som),total=c(col_som,sum(col_som)))
     res
-  },extensions = 'FixedColumns',options = list(scrollX = TRUE,fixedColumns =TRUE))
+  },extensions = 'FixedColumns',options = list(dom='tipr',scrollX = TRUE,fixedColumns =TRUE))
   
   output$nJumpTableGroupTable<-DT::renderDataTable({
     req(input$groupVariableStatistics)
@@ -575,7 +576,7 @@ shinyServer(function(input, output,session) {
       res<-as.data.frame.matrix(round(cprop(t),2))
     }
     res
-  },extensions = 'FixedColumns',options = list(scrollX = TRUE,fixedColumns = list(leftColumns = 1)))
+  },extensions = 'FixedColumns',options = list(dom='tipr',scrollX = TRUE,fixedColumns = list(leftColumns = 1)))
   
   
   output$statsRes<-renderUI({
@@ -1099,10 +1100,32 @@ shinyServer(function(input, output,session) {
   })
   
   extremIndividuals<-reactive({
-    minpc1 <- names(which(fmca()$pc[,as.numeric(input$choix_dim1Extrem)] <= quantile(fmca()$pc[,as.numeric(input$choix_dim1Extrem)], input$extremComp1/100)))
-    maxpc1 <- names(which(fmca()$pc[,as.numeric(input$choix_dim1Extrem)] >= quantile(fmca()$pc[,as.numeric(input$choix_dim1Extrem)], 1-(input$extremComp1/100))))
-    minpc2 <- names(which(fmca()$pc[,as.numeric(input$choix_dim2Extrem)] <= quantile(fmca()$pc[,as.numeric(input$choix_dim2Extrem)], input$extremComp2/100)))
-    maxpc2 <- names(which(fmca()$pc[,as.numeric(input$choix_dim2Extrem)] >= quantile(fmca()$pc[,as.numeric(input$choix_dim2Extrem)], 1-(input$extremComp2/100))))
+   # minpc1 <- names(which(fmca()$pc[,as.numeric(input$choix_dim1Extrem)] <= quantile(fmca()$pc[,as.numeric(input$choix_dim1Extrem)], input$extremComp1/100)))
+   # maxpc1 <- names(which(fmca()$pc[,as.numeric(input$choix_dim1Extrem)] >= quantile(fmca()$pc[,as.numeric(input$choix_dim1Extrem)], 1-(input$extremComp1/100))))
+   # minpc2 <- names(which(fmca()$pc[,as.numeric(input$choix_dim2Extrem)] <= quantile(fmca()$pc[,as.numeric(input$choix_dim2Extrem)], input$extremComp2/100)))
+   # maxpc2 <- names(which(fmca()$pc[,as.numeric(input$choix_dim2Extrem)] >= quantile(fmca()$pc[,as.numeric(input$choix_dim2Extrem)], 1-(input$extremComp2/100))))
+    minpc1<-NULL
+    minpc2<-NULL
+    maxpc1<-NULL
+    maxpc2<-NULL
+    n=nrow(fmca()$pc)
+    
+    ##Extrem on dim 1
+   dim1SortIncre<- sort(fmca()$pc[,as.numeric(input$choix_dim1Extrem)])
+   dim1SortDecre<-sort(dim1SortIncre,decreasing = TRUE)
+   if(input$extremComp1>0){
+    minpc1<-names(dim1SortIncre[1:ceiling(n*input$extremComp1/100)])
+    maxpc1<-names(dim1SortDecre[1:ceiling(n*input$extremComp1/100)])
+   }
+   
+   ##Extrem on dim 2
+   dim2SortIncre<- sort(fmca()$pc[,as.numeric(input$choix_dim2Extrem)])
+   dim2SortDecre<-sort(dim2SortIncre,decreasing = TRUE)
+   if(input$extremComp2>0){
+     minpc2<-names(dim2SortIncre[1:ceiling(n*input$extremComp2/100)])
+     maxpc2<-names(dim2SortDecre[1:ceiling(n*input$extremComp2/100)])
+   }
+   
     list(minpc1=minpc1,maxpc1=maxpc1,minpc2=minpc2,maxpc2=maxpc2)
   })
   
@@ -1123,6 +1146,9 @@ shinyServer(function(input, output,session) {
   })
   
   plotDataExtremAxe1<-reactive({
+    validate(
+      need(input$extremComp1>0,"no extrem individuals selected")
+    )
     ids <- unique(data_CFDA()$id)
     group <- factor(rep(NA, length(ids)), levels = c("lowest component values","highest component values"))
     group[ids %in% extremIndividuals()$minpc1] = "lowest component values"
@@ -1132,10 +1158,16 @@ shinyServer(function(input, output,session) {
   })
   
   output$plotDataExtremAxe1<-renderPlot({
+    validate(
+      need(input$extremComp1>0,"no extrem individuals selected")
+    )
     plotDataExtremAxe1()
   })
   
   plotDataExtremAxe2<-reactive({
+    validate(
+      need(input$choix_dim2Extrem>0,"no extrem individuals selected")
+    )
     ids <- unique(data_CFDA()$id)
     group <- factor(rep(NA, length(ids)), levels = c("lowest component values","highest component values"))
     group[ids %in% extremIndividuals()$minpc2] = "lowest component values"
@@ -1145,6 +1177,9 @@ shinyServer(function(input, output,session) {
   
   
   output$plotDataExtremAxe2<-renderPlot({
+    validate(
+      need(input$choix_dim2Extrem>0,"no extrem individuals selected")
+    )
     plotDataExtremAxe2()
   })
   
@@ -1303,7 +1338,7 @@ shinyServer(function(input, output,session) {
     }
     row.names(d)<-c(1:input$nbclust)
     d
-  },extensions = 'FixedColumns',options = list(scrollX = TRUE,fixedColumns = list(leftColumns = 1)))
+  },extensions = 'FixedColumns',options = list(dom='tipr',scrollX = TRUE,fixedColumns = list(leftColumns = 1)))
   
   output$freqJumpByCluster<-DT::renderDataTable({
     jump<-data.frame(id=names(nJump_data_CFDA()),jump=as.vector(nJump_data_CFDA()))
@@ -1316,7 +1351,7 @@ shinyServer(function(input, output,session) {
       res<-rbind.data.frame(cbind.data.frame(t,total=row_som),total=c(col_som,sum(col_som)))
       res
     
-  },extensions = 'FixedColumns',options = list(scrollX = TRUE,fixedColumns = list(leftColumns = 1)))
+  },extensions = 'FixedColumns',options = list(dom='tipr',scrollX = TRUE,fixedColumns = list(leftColumns = 1)))
   
   output$tableJumpByCluster<-DT::renderDataTable({
     jump<-data.frame(id=names(nJump_data_CFDA()),jump=as.vector(nJump_data_CFDA()))
@@ -1334,7 +1369,7 @@ shinyServer(function(input, output,session) {
     }else{
       res<-as.data.frame.matrix(round(cprop(t),2))
     }
-  },extensions = 'FixedColumns',options = list(scrollX = TRUE,fixedColumns = list(leftColumns = 1)))
+  },extensions = 'FixedColumns',options = list(dom='tipr',scrollX = TRUE,fixedColumns = list(leftColumns = 1)))
   
   ##Time spnet by state by groupe
   observe({
@@ -1368,7 +1403,7 @@ shinyServer(function(input, output,session) {
       row.names(d)<-c(1:input$nbclust,"All")
       output[[paste("timeSpentCluster", par, sep = "_")]] <- DT::renderDataTable({
         d
-      },extensions = 'FixedColumns',options = list(scrollX = TRUE,fixedColumns = list(leftColumns =1,leftColumns=8)))
+      },extensions = 'FixedColumns',options = list(dom='tipr',scrollX = TRUE,fixedColumns = list(leftColumns =1,rightColumns=1)))
     })
   })
   
@@ -1565,5 +1600,14 @@ shinyServer(function(input, output,session) {
     plotData(mixModelData()[,-4], group = gp$Component, addId = FALSE, addBorder = FALSE, sort = TRUE)
   })
   
+  
+  output$downloadDataMix<-downloadHandler(
+    filename =  function() {
+      paste("simulate", ".csv", sep=".")
+    },
+    content = function(file) {
+      write.csv(mixModelData(),file)
+    } 
+  )
   
 })

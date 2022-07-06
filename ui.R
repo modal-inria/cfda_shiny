@@ -8,6 +8,7 @@ if (!require('dplyr')) install.packages("dplyr")
 if (!require('shinydashboard')) install.packages("shinydashboard")
 if (!require('ggpubr')) install.packages("ggpubr")
 if (!require('DT')) install.packages("DT")
+if (!require('questionr')) install.packages("questionr")
 
 ui<-dashboardPage(
   dashboardHeader(title="CFDA"),
@@ -178,11 +179,11 @@ ui<-dashboardPage(
                                tags$div(
                                  box(width=12,
                                
-                                   box(width=12,title="End Time parameter",
-                                      textInput("tpsmax","End time T",placeholder = "no space between digits and decimal separateur must be the dot")
+                                   box(width=12,title="path observe on [0;T]",
+                                      textInput("tpsmax","T:",placeholder = "no space between digits and decimal separateur must be the dot")
                                    ),
-                                   box(width=12,title="factorial analysis parameter",
-                                       selectizeInput("typeBasis","select a type of basis",choice=c("spline"="spline","fourier"="fourier"),selected="spline"),
+                                   box(width=12,title="functionnal data parameters",
+                                       selectizeInput("typeBasis","select a basis of function",choice=c("spline"="spline","fourier"="fourier"),selected="spline"),
                                        numericInput("nbasis","Number de basis",min=1, value=10, max=20),
                                        conditionalPanel("input.typeBasis=='spline'",
                                                         numericInput("norder","Degres of splines",min=2,max=10, value=4)
@@ -254,8 +255,7 @@ ui<-dashboardPage(
                                                             uiOutput("extremComp1ui"),
                                                             uiOutput("extremComp2ui"),
                                                              uiOutput("dim1Extrem"),
-                                                             uiOutput("dim2Extrem"),
-                                                             actionButton("submitExtrem","submit")
+                                                             uiOutput("dim2Extrem")
                                                       ))),
                                                   wellPanel(style="background: white;",
                                                     uiOutput("axe1"),
