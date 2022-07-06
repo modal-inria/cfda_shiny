@@ -1,13 +1,13 @@
-library(shiny)
-library(plotly)
-library("shinyMatrix")
-library(cfda)
-library(tidyverse)
-library(tractor.base)
-library(dplyr)
-library("aricode")
-library(shinydashboard)
-library(DT)
+if (!require('shiny')) install.packages("shiny")
+if (!require('plotly')) install.packages("plotly")
+if (!require('shinyMatrix')) install.packages("shinyMatrix")
+if (!require('cfda')) install.packages("cfda")
+if (!require('tidyverse')) install.packages("tidyverse")
+if (!require('tractor.base')) install.packages("tractor.base")
+if (!require('dplyr')) install.packages("dplyr")
+if (!require('shinydashboard')) install.packages("shinydashboard")
+if (!require('ggpubr')) install.packages("ggpubr")
+if (!require('DT')) install.packages("DT")
 
 ui<-dashboardPage(
   dashboardHeader(title="CFDA"),
