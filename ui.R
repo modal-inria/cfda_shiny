@@ -33,11 +33,13 @@ ui<-dashboardPage(
               box(width=4,
                 title="Import dataset and filter data",
                 box(width=12,
-                fileInput("file1", "Import file (file must have at least 3 columns named : id, time et state)",
+                    verbatimTextOutput("test"),
+                fileInput("file1", "Import file (file must have at least 3 columns named : id, time and state)",
                           multiple = FALSE, accept = c("text/csv",".csv")),
-                radioButtons(inputId = "sep", label = "separator character",
+                radioButtons(inputId = "sep", label = "separator",
                              choices = c("semicolon" = ";", "tabulation" = "\t","space"=" ","comma"=',')),
-                radioButtons(inputId = "dec", label = "decimal separator",choices = c("comma" = ",", "dot" = "."))),
+                radioButtons(inputId = "dec", label = "decimal",choices = c("comma" = ",", "dot" = "."))
+                ),
                 
                 conditionalPanel("output.fileUploaded",
                 box(width=12,
@@ -154,7 +156,7 @@ ui<-dashboardPage(
                                             
                            ),
                            conditionalPanel("input.choixParaGroupeMarkov=='All'",
-                                            plotlyOutput("probaStateAll")
+                                            plotlyOutput("probaStateAll",height="800px")
                            )
                   ),
                   tabPanel("parameters of exponential laws of sojourn time",
@@ -208,7 +210,7 @@ ui<-dashboardPage(
                                                 fluidRow(
                                                   column(9,verbatimTextOutput("eigenvaluesTable")),
                                                   column(3,
-                                                        h4("Eigen values graoh options"),
+                                                        h4("Eigen values graph options"),
                                                         checkboxInput("cumulative","cumulative")
                                                       )
                                                     )
@@ -306,7 +308,7 @@ ui<-dashboardPage(
               ),
               conditionalPanel("input.clusteringSubmit>0",
                                tabBox(width=12,
-                                         tabPanel(width=12,title="dendogramm",
+                                         tabPanel(width=12,title="dendogram",
                                            fluidRow(
                                              column(11,plotOutput("dendogramme",height="900px")),
                                              column(1,checkboxInput(inputId = "couper", label = "cut dendogram?"),
@@ -365,7 +367,33 @@ ui<-dashboardPage(
                                                       
                                                       uiOutput("markovByCluster"))
                                                )
-                                              )
+                                              ),
+                                      tabPanel(title = "description of cluster with group varriables",
+                                               fluidRow(
+                                                 column(4,uiOutput("groupVarDescCluster")),
+                                                 column(4,selectizeInput("typeVarGroup","select the type of the variable",choices=c("numeric"="as.numeric",
+                                                                                                                                    "factor"="as.factor",
+                                                                                                                                    "integer"="as.integer"))),
+                                               
+                                                         conditionalPanel("input.typeVarGroup == 'as.integer' || input.typeVarGroup == 'as.factor' ",
+                                                                          box(width=12,title="frenquencies ",
+                                                                              DTOutput("freqGroupVarFiniByCluster"),
+                                                                              download("downloadfreqGroupVarFiniByCluster")
+                                                                          ),
+                                                                          box(width=12,title="proportion ",
+                                                                              selectizeInput("tableGroupVarFiniChoiceCluster","choose a table",choices=c("proportions"="prop","row profiles"="row","column profiles"="column"),selected="prop"),
+                                                                              DTOutput("tableGroupVarFiniByCluster"),
+                                                                              download("downloadtableGroupVarFiniByCluster")
+                                                                          )
+                                                         ),
+                                                        conditionalPanel("input.typeVarGroup=='as.numeric'",
+                                                                         box(width=12,title="summary",
+                                                                             DTOutput("numVarGroupCluster")
+                                                                             )
+                                                                         
+                                                        )
+                                                         
+                                              ))
                               
                                          
               )),
