@@ -9,6 +9,7 @@ if (!require('shinydashboard')) install.packages("shinydashboard")
 if (!require('ggpubr')) install.packages("ggpubr")
 if (!require('DT')) install.packages("DT")
 if (!require('questionr')) install.packages("questionr")
+if (!require('shinyWidgets')) install.packages("shinyWidgets")
 
 MAXMOD<-12
 TYPE<-NULL
@@ -369,6 +370,14 @@ shinyServer(function(input, output,session) {
                     sd=round(sd(duration),2)
       )
       row.names(d)<-c("All")
+      output$downloadsummaryStatsAll<-downloadHandler(
+        filename = function() {
+          paste("duration", ".csv", sep = "")
+        },
+        content = function(file) {
+          write.csv(d,file)
+        }
+      )
       d
     }else if(input$choixGraphiqueStats=='jump'){
       nJump<-compute_number_jumps(data_used()[,c("id","time","state")])
@@ -382,6 +391,14 @@ shinyServer(function(input, output,session) {
                     sd=round(sd(nJump),2)
       )
       row.names(d)<-c("All")
+      output$downloadsummaryStatsAll<-downloadHandler(
+        filename = function() {
+          paste("numberOfjump", ".csv", sep = "")
+        },
+        content = function(file) {
+          write.csv(d,file)
+        }
+      )
       d
     }
     
@@ -413,6 +430,14 @@ shinyServer(function(input, output,session) {
                                          nbInd=length(duration)))
       }
       row.names(d)<-mod
+      output$downloadnsummaryStatsByGroup<-downloadHandler(
+        filename = function() {
+          paste("durationByGroup", ".csv", sep = "")
+        },
+        content = function(file) {
+          write.csv(d,file)
+        }
+      )
       d
     }else if(input$choixGraphiqueStats=='jump'){
       d<-as.data.frame(matrix(ncol=9,nrow=0))
@@ -431,6 +456,14 @@ shinyServer(function(input, output,session) {
                                          nbInd=length(jump)))
       }
       row.names(d)<-mod
+      output$downloadnsummaryStatsByGroup<-downloadHandler(
+        filename = function() {
+          paste("numberJumpByGroup", ".csv", sep = "")
+        },
+        content = function(file) {
+          write.csv(d,file)
+        }
+      )
       d
       
     }
@@ -443,6 +476,15 @@ shinyServer(function(input, output,session) {
     d<-rbind.data.frame(as.vector(t),prop)
     colnames(d)<-name
     row.names(d)<-c("Frequencies","proportions")
+    
+    output$downloadnJumpTable<-downloadHandler(
+      filename = function() {
+        paste("numberJumpProp", ".csv", sep = "")
+      },
+      content = function(file) {
+        write.csv(d,file)
+      }
+    )
     d
   },extensions = 'FixedColumns',options = list(dom='tipr',scrollX = TRUE))
   
@@ -475,11 +517,32 @@ shinyServer(function(input, output,session) {
                                          sd=round(sd(time),2),
                                          nbInd=length(time)))
       }
-      row.names(d)<-gp
+      time<-timeSpent[,par]
+      q<-quantile(time)
+      d<-rbind.data.frame(d,data.frame(mean=round(mean(time),2),
+                                       median=round(q[3],2),
+                                       Q1=round(q[2],2),
+                                       Q3=round(q[4],2),
+                                       min=round(q[1],2),
+                                       max=round(q[5],2),
+                                       sd=round(sd(time),2),
+                                       nbInd=length(time)))
+      row.names(d)<-c(gp,"All")
       d
       output[[paste("timeSpentGroup", par, sep = "_")]] <- DT::renderDataTable({
         d
       },extensions = 'FixedColumns',options = list(dom='tipr',scrollX = TRUE,fixedColumns = list(leftColumns = 1),lengthMenu = c(2,6,12), pageLength = 2))
+      
+      plotname <- paste("timeSpentGroup", par, sep = "_")
+      
+      output[[paste0("download",plotname)]] <- downloadHandler(
+        filename =  function() {
+          paste(plotname, "csv", sep=".")
+        },
+        content = function(file) {
+          write.csv(d,file=file)
+        } 
+      )
     })
   })
   
@@ -528,9 +591,18 @@ shinyServer(function(input, output,session) {
                                        sd=round(sd(time),2)))
     }
     row.names(d)<-mod
-    d
     
+    output$downloadtimeSpentAllTable <- downloadHandler(
+      filename =  function() {
+        paste("timeSpentState", "csv", sep=".")
+      },
+      content = function(file) {
+        write.csv(d,file=file)
+      } 
+    )
+    d
   },options = list(dom='tipr',scrollX = TRUE,fixedColumns = list(leftColumns = 1)))
+  
   
   output$nJumpTableGroupFreq<-DT::renderDataTable({
     req(input$groupVariableStatistics)
@@ -550,8 +622,18 @@ shinyServer(function(input, output,session) {
     row_som<-apply(t,1,sum)
     col_som<-apply(t,2,sum)
     res<-rbind.data.frame(cbind.data.frame(t,total=row_som),total=c(col_som,sum(col_som)))
+    
+    output$downloadnJumpTableGroupFreq <- downloadHandler(
+      filename =  function() {
+        paste("numberOfJumpsFreq", "csv", sep=".")
+      },
+      content = function(file) {
+        write.csv(res,file=file)
+      } 
+    )
     res
   },extensions = 'FixedColumns',options = list(dom='tipr',scrollX = TRUE,fixedColumns =TRUE))
+  
   
   output$nJumpTableGroupTable<-DT::renderDataTable({
     req(input$groupVariableStatistics)
@@ -578,6 +660,16 @@ shinyServer(function(input, output,session) {
     }else{
       res<-as.data.frame.matrix(round(cprop(t),2))
     }
+    
+    output$downloadnJumpTableGroupTable <- downloadHandler(
+      filename =  function() {
+        paste("numberOfJumpsProp", "csv", sep=".")
+      },
+      content = function(file) {
+        write.csv(res,file=file)
+      } 
+    )
+    
     res
   },extensions = 'FixedColumns',options = list(dom='tipr',scrollX = TRUE,fixedColumns = list(leftColumns = 1)))
   
@@ -601,7 +693,7 @@ shinyServer(function(input, output,session) {
                                                  conditionalPanel("input.choixGraphiqueStats=='jump'",
                                                                   box(width=12,title="table of number of jumps",
                                                                       DTOutput("nJumpTable"),
-                                                                      downloadButton("downloadNjumpDesc")
+                                                                      downloadButton("downloadnJumpTable")
                                                                   )
                                                  )
                                                )
@@ -610,7 +702,7 @@ shinyServer(function(input, output,session) {
                                         column(4,
                                                box(width=12,title="plot",
                                                    DTOutput("timeSpentAllTable"),
-                                                   downloadButton("downloadTimeSpentAllDesc")
+                                                   downloadButton("downloadtimeSpentAllTable")
                                                ))            
                        ),
                        conditionalPanel("input.choixGraphiqueStats!='summary'",
@@ -1347,6 +1439,13 @@ shinyServer(function(input, output,session) {
                                        nbInd=length(jump)))
     }
     row.names(d)<-c(1:input$nbclust)
+    output$downloadSummaryJumpByCluster<-downloadHandler(
+      filename =  function() {
+        paste("bygroup", "csv", sep=".")
+      },
+      content = function(file) {
+        write.csv(d,file=file)
+      }) 
     d
   },extensions = 'FixedColumns',options = list(dom='tipr',scrollX = TRUE,fixedColumns = list(leftColumns = 1)))
   
@@ -1359,6 +1458,13 @@ shinyServer(function(input, output,session) {
       row_som<-apply(t,1,sum)
       col_som<-apply(t,2,sum)
       res<-rbind.data.frame(cbind.data.frame(t,total=row_som),total=c(col_som,sum(col_som)))
+      output$downloadfreqJumpByCluster<-downloadHandler(
+        filename =  function() {
+          paste("bygroup", "csv", sep=".")
+        },
+        content = function(file) {
+          write.csv(res,file=file)
+        }) 
       res
     
   },extensions = 'FixedColumns',options = list(dom='tipr',scrollX = TRUE,fixedColumns = list(leftColumns = 1)))
@@ -1379,6 +1485,15 @@ shinyServer(function(input, output,session) {
     }else{
       res<-as.data.frame.matrix(round(cprop(t),2))
     }
+    output$downloadtableJumpByCluster<-downloadHandler(
+      filename =  function() {
+        paste("bygroup", "csv", sep=".")
+      },
+      content = function(file) {
+        write.csv(res,file=file)
+      }) 
+    res
+    
   },extensions = 'FixedColumns',options = list(dom='tipr',scrollX = TRUE,fixedColumns = list(leftColumns = 1)))
   
   ##Time spnet by state by groupe
@@ -1411,6 +1526,16 @@ shinyServer(function(input, output,session) {
                                        sd=round(sd(time),2),
                                        nbInd=length(time)))
       row.names(d)<-c(1:input$nbclust,"All")
+      plotname <- paste("timeSpentCluster", par, sep = "_")
+      
+      output[[paste0("download",plotname)]]<-downloadHandler(
+        filename =  function() {
+          paste("bygroup", "csv", sep=".")
+        },
+        content = function(file) {
+          write.csv(d,file=file)
+        }) 
+      
       output[[paste("timeSpentCluster", par, sep = "_")]] <- DT::renderDataTable({
         d
       },extensions = 'FixedColumns',options = list(dom='tipr',scrollX = TRUE,fixedColumns = list(leftColumns =1,rightColumns=1)))
@@ -1564,7 +1689,14 @@ shinyServer(function(input, output,session) {
         row_som<-apply(t,1,sum)
         col_som<-apply(t,2,sum)
         freq_table<-rbind.data.frame(cbind.data.frame(t,total=row_som),total=c(col_som,sum(col_som)))
-        freq_table
+        output$downloadfreqGroupVarFiniByCluster<-downloadHandler(
+          filename =  function() {
+            paste("bygroup", "csv", sep=".")
+          },
+          content = function(file) {
+            write.csv(freq_table,file=file)
+          }) 
+        
       }
     
     
@@ -1598,6 +1730,13 @@ shinyServer(function(input, output,session) {
             }else{
               res<-as.data.frame.matrix(round(cprop(t),2))
             }
+        output$downloadtableGroupVarFiniByCluster<-downloadHandler(
+          filename =  function() {
+            paste("bygroup", "csv", sep=".")
+          },
+          content = function(file) {
+            write.csv(res,file=file)
+          }) 
         res
       }
     
@@ -1641,6 +1780,15 @@ shinyServer(function(input, output,session) {
                               sd=round(sd(data[,input$choixGroupVarClusterDesc]),2),
                               nbInd=length(data[,input$choixGroupVarClusterDesc])))
       row.names(d)<-c(paste("cluster",1:input$nbclust),"All")
+     
+      output$downloadnumVarGroupCluster<-downloadHandler(
+        filename =  function() {
+        paste("bygroup", "csv", sep=".")
+      },
+      content = function(file) {
+        write.csv(d,file=file)
+      }) 
+      
       d
     }
     

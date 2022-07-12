@@ -9,6 +9,7 @@ if (!require('shinydashboard')) install.packages("shinydashboard")
 if (!require('ggpubr')) install.packages("ggpubr")
 if (!require('DT')) install.packages("DT")
 if (!require('questionr')) install.packages("questionr")
+if (!require('shinyWidgets')) install.packages("shinyWidgets")
 
 ui<-dashboardPage(
   dashboardHeader(title="CFDA"),
@@ -36,10 +37,19 @@ ui<-dashboardPage(
                     verbatimTextOutput("test"),
                 fileInput("file1", "Import file (file must have at least 3 columns named : id, time and state)",
                           multiple = FALSE, accept = c("text/csv",".csv")),
-                radioButtons(inputId = "sep", label = "separator",
-                             choices = c("semicolon" = ";", "tabulation" = "\t","space"=" ","comma"=',')),
-                radioButtons(inputId = "dec", label = "decimal",choices = c("comma" = ",", "dot" = "."))
+                radioGroupButtons(
+                  inputId = "sep", label = "separator",
+                  choices = c("semicolon" = ";", "tabulation" = "\t","space"=" ","comma"=','),
+                  individual = TRUE,checkIcon = list(yes = tags$i(class = "fa fa-circle", 
+                                                                  style = "color: steelblue"), no = tags$i(class = "fa fa-circle-o", 
+                                                                                                           style = "color: steelblue"))
                 ),
+                radioGroupButtons(
+                  inputId = "dec", label = "decimal",choices = c("comma" = ",", "dot" = "."),
+                  individual = TRUE,checkIcon = list(yes = tags$i(class = "fa fa-circle", 
+                                 style = "color: steelblue"), no = tags$i(class = "fa fa-circle-o", 
+                                style = "color: steelblue"))
+                )),
                 
                 conditionalPanel("output.fileUploaded",
                 box(width=12,
@@ -49,15 +59,21 @@ ui<-dashboardPage(
                     h3("Data selection"),
                     column(4,hr(),
                         h5("length of trajectories"),
-                        radioButtons("filterChoiceLength","",choices = c("All available"="1","Filter"="2"),selected = "1"),
+                        radioGroupButtons(inputId="filterChoiceLength","",choices = c("All available"="1","Filter"="2"),selected = "1",
+                          status = "primary",checkIcon = list(yes = icon("ok", lib = "glyphicon"),no = icon("remove",lib = "glyphicon"))
+                        ),
                         conditionalPanel("input.filterChoiceLength=='2'", uiOutput("lengthInt"))),
                     column(4, hr(),
                         h5("number of jumps"),
-                        radioButtons("filterChoiceJump","",choices = c("All available"="1","Filter"="2"),selected = "1"),
+                        radioGroupButtons(inputId="filterChoiceJump","",choices = c("All available"="1","Filter"="2"),selected = "1",
+                                          status = "primary",checkIcon = list(yes = icon("ok", lib = "glyphicon"),no = icon("remove",lib = "glyphicon"))
+                        ),
                         conditionalPanel("input.filterChoiceJump=='2'",uiOutput("jumpInt"))),
                     column(4, hr(),
                         h5("percentage"),
-                        radioButtons("filterChoicePercentage","",choices = c("All available"="1","Filter"="2"),selected = "1"),
+                        radioGroupButtons(inputId="filterChoicePercentage","",choices = c("All available"="1","Filter"="2"),selected = "1",
+                                          status = "primary",checkIcon = list(yes = icon("ok", lib = "glyphicon"),no = icon("remove",lib = "glyphicon"))
+                        ),
                         conditionalPanel("input.filterChoicePercentage=='2'",
                           sliderInput("nb_ind", "The percentage of the first individuals who verify conditions", min = 5,100,value=100,step=5)))
                         ),
@@ -75,18 +91,28 @@ ui<-dashboardPage(
       ),
       tabItem(tabName = "visualizeData",
               conditionalPanel("output.fileUploaded",
-                               box(width=4,title="Graph options",
-                                   checkboxInput("addId","Add id labels in the graph",FALSE),
-                                   checkboxInput("addBorder","Add border in the graph",FALSE),
-                                   checkboxInput("sort","sort plot by the time spent in the first state"),
-                                   textInput("plotDataTitle","title","Trajectories of the Markov process"),
-                                   radioButtons("choixParaGroupeVisualize","choose an option",choices=c("All","By group variable"="byGroup"),selected="All"),
-                                   conditionalPanel("input.choixParaGroupeVisualize=='byGroup'",
-                                                    uiOutput("groupVarVisualize")),
-                                   actionButton("modPlotData","update plot of data"),
-                                   downloadButton('downloadPlotTraj', 'Download Plot')
-                                   ),
-                                box(width=8,title="plot data",height=1000,
+                               dropdown(
+                                 
+                                 tags$h3("List of Input"),
+                                 
+                                 checkboxInput("addId","Add id labels in the graph",FALSE),
+                                 checkboxInput("addBorder","Add border in the graph",FALSE),
+                                 checkboxInput("sort","sort plot by the time spent in the first state"),
+                                 textInput("plotDataTitle","title","Trajectories of the Markov process"),
+                                 radioButtons("choixParaGroupeVisualize","choose an option",choices=c("All","By group variable"="byGroup"),selected="All"),
+                                 conditionalPanel("input.choixParaGroupeVisualize=='byGroup'",
+                                                  uiOutput("groupVarVisualize")),
+                                 actionButton("modPlotData","update plot of data"),
+                                 downloadButton('downloadPlotTraj', 'Download Plot'),
+                                 
+                                 style = "unite", icon = icon("gear"),
+                                 status = "primary", width = "300px",
+                                 animate = animateOptions(
+                                   enter = animations$fading_entrances$fadeInLeftBig,
+                                   exit = animations$fading_exits$fadeOutRightBig
+                                 )
+                               ),
+                                box(width=12,title="plot data",height=1000,
                                     plotOutput("traj")
                                     )
                                ),
@@ -219,7 +245,7 @@ ui<-dashboardPage(
                                          tabPanel("factorial plan",
                                               h4("Factorial plan"),
                                             
-                                                    wellPanel(
+                                                    wellPanel(style="background: white;",
                                                       fluidRow(
                                                       column(10,
                                                              plotlyOutput("planfact")),
@@ -233,12 +259,12 @@ ui<-dashboardPage(
                                               h4("Optimal encoding function"),
                                                   fluidRow(
                                                     column(6 ,
-                                                           wellPanel(
+                                                           wellPanel(style="background: white;",
                                                              plotOutput("optimalEncoding1"),
                                                              downloadButton("saveOptimalEncoding1")
                                                            )),
                                                     column(6,
-                                                           wellPanel(
+                                                           wellPanel(style="background: white;",
                                                              plotOutput("optimalEncoding2"),
                                                              downloadButton("saveOptimalEncoding2")
                                                            )
@@ -249,16 +275,22 @@ ui<-dashboardPage(
                                          tabPanel("extrem individuals",
                                                   wellPanel(style="background: white;",
                                                     fluidRow(
-                                                      column(9,
+                                                      column(12,
                                                              plotlyOutput("planfactExtremeIndividuals")),
-                                                      column(3,
-                                                            # sliderInput("extremComp1","extreme individuals dimension 1",min=0, max=100, value=10),
-                                                             #sliderInput("extremComp2","extreme individuals dimension 2",min=0, max=100, value=10),
-                                                            uiOutput("extremComp1ui"),
-                                                            uiOutput("extremComp2ui"),
-                                                             uiOutput("dim1Extrem"),
-                                                             uiOutput("dim2Extrem")
-                                                      ))),
+                                                      dropdown(
+                                                        uiOutput("extremComp1ui"),
+                                                        uiOutput("extremComp2ui"),
+                                                        uiOutput("dim1Extrem"),
+                                                        uiOutput("dim2Extrem"),
+                                                        style = "unite", icon = icon("gear"),
+                                                        status = "primary", width = "300px",
+                                                        animate = animateOptions(
+                                                          enter = animations$fading_entrances$fadeInLeftBig,
+                                                          exit = animations$fading_exits$fadeOutRightBig
+                                                        )
+                                                      ),
+                                                            
+                                                      )),
                                                   wellPanel(style="background: white;",
                                                     uiOutput("axe1"),
                                                     plotOutput("plotDataExtremAxe1"),
@@ -331,15 +363,16 @@ ui<-dashboardPage(
                                                           box(width=12,title="summary of number ob jumps",
                                                         DTOutput("SummaryJumpByCluster")),
                                                           box(width=12,title="frenquencies table of number of jumps",
-                                                            DTOutput("freqJumpByCluster")
+                                                            DTOutput("freqJumpByCluster"),
+                                                            downloadButton("downloadfreqJumpByCluster")
                                                               ),
                                                         box(width=12,title="proportion table of number of jumps",
                                                             selectizeInput("tableChoiceCluster","choose a table",choices=c("proportions"="prop","row profiles"="row","column profiles"="column"),selected="prop"),
-                                                            DTOutput("tableJumpByCluster")
+                                                            DTOutput("tableJumpByCluster"),
+                                                            downloadButton("downloadtableJumpByCluster")
                                                         )
                                                         ),
                                                  conditionalPanel("input.choixGraphiqueStatsCluster!='jump'",
-                                                                 
                                                                     uiOutput("timeStateByCluster")
                                                                   
                                                  )
@@ -378,17 +411,18 @@ ui<-dashboardPage(
                                                          conditionalPanel("input.typeVarGroup == 'as.integer' || input.typeVarGroup == 'as.factor' ",
                                                                           box(width=12,title="frenquencies ",
                                                                               DTOutput("freqGroupVarFiniByCluster"),
-                                                                              download("downloadfreqGroupVarFiniByCluster")
+                                                                              downloadButton("downloadfreqGroupVarFiniByCluster")
                                                                           ),
                                                                           box(width=12,title="proportion ",
                                                                               selectizeInput("tableGroupVarFiniChoiceCluster","choose a table",choices=c("proportions"="prop","row profiles"="row","column profiles"="column"),selected="prop"),
                                                                               DTOutput("tableGroupVarFiniByCluster"),
-                                                                              download("downloadtableGroupVarFiniByCluster")
+                                                                              downloadButton("downloadtableGroupVarFiniByCluster")
                                                                           )
                                                          ),
                                                         conditionalPanel("input.typeVarGroup=='as.numeric'",
                                                                          box(width=12,title="summary",
-                                                                             DTOutput("numVarGroupCluster")
+                                                                             DTOutput("numVarGroupCluster"),
+                                                                             downloadButton("downloadnumVarGroupCluster")
                                                                              )
                                                                          
                                                         )
