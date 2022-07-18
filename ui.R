@@ -757,7 +757,35 @@ ui<-dashboardPage(
                         )
                       )
                     ),
-                    tabItem(tabName = "help"),
+                    tabItem(tabName = "help",
+                            tabBox(
+                              width = 12,
+                              tabPanel("import data",
+                                   p("This part allows you to import a csv file. You need to choose a file, the separator and the decimal. If dataset doesn't appear check the file format"),    
+                                    
+                                   p("After uploaded the file you can filter individuals by the number of jumps, the length of trajectories observed or choose the first n% individuals")  
+                                       ),
+                              tabPanel("visualize data",
+                                       p("this part allows you to visualize the trajectories of the individuals selected in import part. Some graphics options are provided")
+                                       ),
+                              tabPanel("descriptive statistics",
+                                       p("In this part you can see the statistics provide by cfda package (number of jumps, summary of data, duration of trajectories and time spent in each state). If your dataset contains 
+                                         other variables that can be use as group variable you can choose them to compute all of this statistics by group variable.")
+                                       ),
+                              tabPanel("estimation of markov chain",
+                                       p("in this part we assume than the data arise from a markov jump process and we compute all of the parameters of the model. You can also compute them by group variable")
+                                       ),
+                              tabPanel("Analysis",
+                                       p("This part contains 2 analysis : Factorial analysis and clustering analysis. You have to compute factorial analysis before use clusterinf functionnality"),
+                                       h3("Factorial Analysis"),
+                                       p("You need to choose ending time and basis function"),
+                                       h3("Clustering"),
+                                       p("after compute factorial analysis you can make a clustering on principal component. You need to choose the method, the number of component or the percentage of variance"),
+                                       p("After that the app compute the dendogram and other plots to help you to analyse the differents clusters")
+                                       ),
+                              tabPanel("simulate a mixture model")
+                            ) 
+                    ),
                     tabItem(
                       tabName = "simulateMarkov",
                       box(

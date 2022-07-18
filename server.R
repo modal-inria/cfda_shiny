@@ -225,7 +225,6 @@ shinyServer(function(input, output, session) {
       is.numeric(data_used()[, "time"]),
       'time must be numeric, please choose correct decimal symbol'
     ))
-    
     withProgress(message = 'making plot of individuals trajectories',
                  detail = 'please wait until the end',
                  value = 0,
@@ -253,8 +252,7 @@ shinyServer(function(input, output, session) {
                          unique(data_used()[, c("id", input$groupVariableVisualize)])
                        class <- r[, input$groupVariableVisualize]
                      }
-                     p <-
-                       plotData(
+                     p <-plotData(
                          data_used()[, c("id", "time", "state")],
                          group = class,
                          addId = input$addId,
@@ -281,7 +279,7 @@ shinyServer(function(input, output, session) {
     validate(need(
       is.numeric(data_used()[, "time"]),
       'time must be numeric, please choose correct decimal symbol'
-    ),)
+    ))
     duration <- compute_duration(data_used()[, c("id", "time", "state")])
   })
   
@@ -289,7 +287,7 @@ shinyServer(function(input, output, session) {
     validate(need(
       is.numeric(data_used()[, "time"]),
       'time must be numeric, please choose correct decimal symbol'
-    ),)
+    ))
     compute_time_spent(data_used()[, c("id", "state", "time")])
   })
   
@@ -297,7 +295,7 @@ shinyServer(function(input, output, session) {
     validate(need(
       is.numeric(data_used()[, "time"]),
       'time must be numeric, please choose correct decimal symbol'
-    ),)
+    ))
     compute_number_jumps(data_used()[, c("id", "time", "state")])
   })
   
@@ -339,10 +337,8 @@ shinyServer(function(input, output, session) {
                      if (input$choixParaGroupeStatistics == 'byGroup') {
                        data <- data_used()[data_used()[, input$groupVariableStatistics] == par, ]
                        if (input$choixGraphiqueStats == "summary") {
-                         p <- summary_cfd(data[, c("id", "state", "time")])
-                         output[[paste("summary", par, sep = "_")]] <-
-                           renderPrint({
-                             p
+                         output[[paste("summary", par, sep = "_")]] <-renderPrint({
+                           summary_cfd(data[, c("id", "state", "time")])
                            })
                        }
                      }
@@ -1358,13 +1354,11 @@ shinyServer(function(input, output, session) {
                        )
                      )
                      if (input$typeBasis == 'spline') {
-                       basis <-
-                         create.bspline.basis(c(min(data_CFDA()[, "time"]), tmax),
+                       basis <-create.bspline.basis(c(min(data_CFDA()[, "time"]), tmax),
                                               nbasis = input$nbasis,
                                               norder = input$norder)
                      } else{
-                       basis <-
-                         create.fourier.basis(c(min(data_CFDA()[, "time"]), tmax), nbasis = input$nbasis)
+                       basis <- create.fourier.basis(c(min(data_CFDA()[, "time"]), tmax), nbasis = input$nbasis)
                      }
                      fmca <- compute_optimal_encoding(data_CFDA(), basis)
                      for (i in 3:15) {
@@ -1413,7 +1407,7 @@ shinyServer(function(input, output, session) {
     if (input$cumulative) {
       g <-
         ggplot(cbind.data.frame(x = 1:nrow(eigenvalues()), y = eigenvalues()[, 3])) +
-        ggtitle("eigenvalues plot") +
+        ggtitle("cumulative eigenvalues plot") +
         theme(plot.title = element_text(hjust = 0.5)) + scale_x_continuous(breaks =
                                                                              1:nrow(eigenvalues())) +
         geom_col(fill = "blue") + aes(x = x, y = y) +
@@ -1422,7 +1416,7 @@ shinyServer(function(input, output, session) {
     } else{
       g <-
         ggplot(cbind.data.frame(x = 1:nrow(eigenvalues()), y = eigenvalues()[, 2])) +
-        ggtitle("cumulative eigenvalues plot") +
+        ggtitle("eigenvalues plot") +
         theme(plot.title = element_text(hjust = 0.5)) + scale_x_continuous(breaks =
                                                                              1:nrow(eigenvalues())) +
         geom_col(fill = "blue") + aes(x = x, y = y) +
@@ -1433,8 +1427,7 @@ shinyServer(function(input, output, session) {
   
   output$dim1 <- renderUI({
     input$soumettre
-    maxi <-
-      isolate(input$nbasis * length(summary_cfd(data_CFDA()[, c("id", "state", "time")])$states))
+    maxi <-isolate(input$nbasis * length(summary_cfd(data_CFDA()[, c("id", "state", "time")])$states))
     selectInput(
       inputId = "choix_dim1",
       label = "axis 1",
@@ -1481,7 +1474,7 @@ shinyServer(function(input, output, session) {
                     ),
                     addNames = FALSE) +
         geom_point(aes(color = as.factor(group[, input$groupVariableFactorialPlan]))) +
-        scale_fill_discrete(name = input$groupVariableFactorialPlan)
+        labs(color =input$groupVariableFactorialPlan) 
       
     }
   })
@@ -1596,10 +1589,6 @@ shinyServer(function(input, output, session) {
   })
   
   extremIndividuals <- reactive({
-    # minpc1 <- names(which(fmca()$pc[,as.numeric(input$choix_dim1Extrem)] <= quantile(fmca()$pc[,as.numeric(input$choix_dim1Extrem)], input$extremComp1/100)))
-    # maxpc1 <- names(which(fmca()$pc[,as.numeric(input$choix_dim1Extrem)] >= quantile(fmca()$pc[,as.numeric(input$choix_dim1Extrem)], 1-(input$extremComp1/100))))
-    # minpc2 <- names(which(fmca()$pc[,as.numeric(input$choix_dim2Extrem)] <= quantile(fmca()$pc[,as.numeric(input$choix_dim2Extrem)], input$extremComp2/100)))
-    # maxpc2 <- names(which(fmca()$pc[,as.numeric(input$choix_dim2Extrem)] >= quantile(fmca()$pc[,as.numeric(input$choix_dim2Extrem)], 1-(input$extremComp2/100))))
     minpc1 <- NULL
     minpc2 <- NULL
     maxpc1 <- NULL
@@ -1611,8 +1600,8 @@ shinyServer(function(input, output, session) {
       sort(fmca()$pc[, as.numeric(input$choix_dim1Extrem)])
     dim1SortDecre <- sort(dim1SortIncre, decreasing = TRUE)
     if (input$extremComp1 > 0) {
-      minpc1 <- names(dim1SortIncre[1:ceiling(n * input$extremComp1 / 100)])
-      maxpc1 <- names(dim1SortDecre[1:ceiling(n * input$extremComp1 / 100)])
+      minpc1 <- names(dim1SortIncre[1:ceiling(n * input$extremComp1 / 100 /2)])
+      maxpc1 <- names(dim1SortDecre[1:ceiling(n * input$extremComp1 / 100 /2)])
     }
     
     ##Extrem on dim 2
@@ -1620,9 +1609,9 @@ shinyServer(function(input, output, session) {
       sort(fmca()$pc[, as.numeric(input$choix_dim2Extrem)])
     dim2SortDecre <- sort(dim2SortIncre, decreasing = TRUE)
     if (input$extremComp2 > 0) {
-      minpc2 <- names(dim2SortIncre[1:ceiling(n * input$extremComp2 / 100)])
+      minpc2 <- names(dim2SortIncre[1:ceiling(n * input$extremComp2 / 100/2)])
       maxpc2 <-
-        names(dim2SortDecre[1:ceiling(n * input$extremComp2 / 100)])
+        names(dim2SortDecre[1:ceiling(n * input$extremComp2 / 100/2)])
     }
     
     list(
@@ -1794,17 +1783,24 @@ shinyServer(function(input, output, session) {
     dendogramme()
   })
   
+  max_cluster<-reactive({
+    max=length(unique(data_CFDA()[,"id"]))-1
+  })
   output$clus <- renderUI({
     numericInput(
       "nbclust",
       "Nombre de groupe",
       min = 2,
-      max = 100,
+      max = max_cluster(),
       value = 2
     )
   })
   
   class <- reactive({
+    req(input$nbclust)
+    validate(
+      need(input$nbclust<=max_cluster() &input$nbclust>=2,paste("the number of clusters must be between",2,"and",max_cluster()))
+    )
     class <- cutree(hc(), k = input$nbclust)
   })
   groupe <- reactive({
@@ -1909,19 +1905,15 @@ shinyServer(function(input, output, session) {
   ))
   
   output$freqJumpByCluster <- DT::renderDataTable({
-    jump <-
-      data.frame(id = names(nJump_data_CFDA()),
+    jump <-data.frame(id = names(nJump_data_CFDA()),
                  jump = as.vector(nJump_data_CFDA()))
-    group <-
-      cbind.data.frame(id = names(class()), group = as.vector(class()))
+    group <-cbind.data.frame(id = names(class()), group = as.vector(class()))
     jumpMerge <- merge(jump, group, by = "id")
     t <- table(jumpMerge$group, jumpMerge$jump)
     t <- as.data.frame.matrix(t)
     row_som <- apply(t, 1, sum)
     col_som <- apply(t, 2, sum)
-    res <-
-      rbind.data.frame(cbind.data.frame(t, total = row_som), total = c(col_som, sum(col_som)))
-    
+    res <-rbind.data.frame(cbind.data.frame(t, total = row_som), total = c(col_som, sum(col_som)))
     res
     
   }, extensions = c('FixedColumns', 'Buttons'), server = FALSE, options = list(
@@ -2177,8 +2169,7 @@ shinyServer(function(input, output, session) {
     )
     
     data <- data_with_group_var()
-    data <-
-      unique(data[, c("id",
+    data <-unique(data[, c("id",
                       "res_class_cluster",
                       input$choixGroupVarClusterDesc)])
     if (input$typeVarGroup %in% c("as.factor", "as.integer")) {
@@ -2189,18 +2180,13 @@ shinyServer(function(input, output, session) {
         data[, input$choixGroupVarClusterDesc] <-
           as.integer(data[, input$choixGroupVarClusterDesc])
       }
-      t <-
-        table(data$res_class_cluster, data[, input$choixGroupVarClusterDesc])
+      t <-table(data$res_class_cluster, data[, input$choixGroupVarClusterDesc])
       t <- as.data.frame.matrix(t)
       row_som <- apply(t, 1, sum)
       col_som <- apply(t, 2, sum)
-      freq_table <-
-        rbind.data.frame(cbind.data.frame(t, total = row_som),
+      freq_table <-rbind.data.frame(cbind.data.frame(t, total = row_som),
                          total = c(col_som, sum(col_som)))
     }
-    
-    
-    
   }, extensions = c('FixedColumns', 'Buttons'), server = FALSE, options = list(
     dom = 'Btipr',
     scrollX = TRUE,
@@ -2212,14 +2198,12 @@ shinyServer(function(input, output, session) {
     validate(
       need(
         nrow(unique(data_used()[, c("id", input$choixGroupVarClusterDesc)])) == length(unique(data_used()$id)),
-        "
-      this variable can't be used as group variable because some indiviudas has more than 1 modality for this variable"
+        "this variable can't be used as group variable because some indiviudas has more than 1 modality for this variable"
       )
     )
     
     data <- data_with_group_var()
-    data <-
-      unique(data[, c("id",
+    data <-unique(data[, c("id",
                       "res_class_cluster",
                       input$choixGroupVarClusterDesc)])
     if (input$typeVarGroup %in% c("as.factor", "as.integer")) {
@@ -2230,8 +2214,7 @@ shinyServer(function(input, output, session) {
         data[, input$choixGroupVarClusterDesc] <-
           as.integer(data[, input$choixGroupVarClusterDesc])
       }
-      t <-
-        table(data$res_class_cluster, data[, input$choixGroupVarClusterDesc])
+      t <-table(data$res_class_cluster, data[, input$choixGroupVarClusterDesc])
       if (input$tableGroupVarFiniChoiceCluster == "prop") {
         t <- as.data.frame.matrix(prop.table(t))
         row_som <- apply(t, 1, sum)
@@ -2492,8 +2475,5 @@ shinyServer(function(input, output, session) {
       sort = TRUE
     )
   })
-  
-  
-  
   
 })
