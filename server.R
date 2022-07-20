@@ -22,7 +22,9 @@ if (!require('questionr'))
   install.packages("questionr")
 if (!require('shinyWidgets'))
   install.packages("shinyWidgets")
-
+if (!require('shinycssloaders'))
+  install.packages("shinycssloaders")
+data(care)
 MAXMOD<-12
 shinyServer(function(input, output, session) {
   ##################
@@ -76,24 +78,31 @@ shinyServer(function(input, output, session) {
           group_by(id) %>%  filter(time == min(time, na.rm = TRUE))
         maxT <- data %>%
           group_by(id) %>%  filter(time == max(time, na.rm = TRUE))
-        if (is.na(input$upper) & is.na(input$lower)) {
-          idToKeep <- minT$id
-        } else if (is.na(input$upper) & !is.na(input$lower)) {
-          idToKeep <- minT[minT$time <= input$lower, "id"]$id
-        } else if (!is.na(input$upper) & is.na(input$lower)) {
-          idToKeep <- maxT[maxT$time >= input$upper, "id"]$id
+       if (input$upper=="" & input$lower=="") {
+         idToKeep <- minT$id
+       } else if (input$upper=="" & !is.na(input$lower)) {
+          lower = as.double(input$lower)
+          validate(need(!is.na(lower),"invalid time please check format"))
+          idToKeep <- minT[minT$time <= lower, "id"]$id
+        } else if (!is.na(input$upper) & input$lower=="") {
+          upper = as.double(input$upper)
+          validate(need(!is.na(upper),"invalid time please check format"))
+          idToKeep <- maxT[maxT$time >= upper, "id"]$id
         } else{
-          idToKeep <-
-            intersect(minT[minT$time <= input$lower, "id"], maxT[maxT$time >= input$upper, "id"])$id
+          upper = as.double(input$upper)
+         lower = as.double(input$lower)
+          validate(need(!is.na(lower),"invalid time please check format"),
+                   need(!is.na(upper),"invalid time please check format"))
+          idToKeep <-intersect(minT[minT$time <= lower, "id"], maxT[maxT$time >= upper, "id"])$id
         }
         data <- data[data$id %in% idToKeep, ]
       }
       
       ##Filter by number of jump
       if (input$filterChoiceJump == '2') {
-        nJump <- nJumpImport()
+        nJump <- nJump_import()
         if (is.na(input$more) & is.na(input$less)) {
-          idToKeep <- unique(data_import()$id)
+          idToKeep <- unique(data$id)
         } else if (is.na(input$more) & !is.na(input$less)) {
           idToKeep <- names(nJump[nJump <= input$less])
         } else if (!is.na(input$more) & is.na(input$less)) {
@@ -115,15 +124,7 @@ shinyServer(function(input, output, session) {
     
   })
   
-  #Number of jumps of initial dataset
-  nJumpImport <- reactive({
-    validate(need(
-      is.numeric(data_import()[, "time"]),
-      'time must be numeric, please choose correct decimal symbol'
-    ),)
-    compute_number_jumps(data_import()[, c("id", "time", "state")])
-  })
-  
+
   ##verify if a dataset exist
   output$fileUploaded <- reactive({
     return(!is.null(data_used()))
@@ -141,32 +142,7 @@ shinyServer(function(input, output, session) {
     buttons = c('copy', 'csv', 'excel', 'pdf'),
     rownames = FALSE
   ))
-  ##Filter data
-  output$lengthInt <- renderUI({
-    validate(need(
-      is.numeric(data_used()[, "time"]),
-      'time must be numeric, please choose correct decimal symbol'
-    ),)
-    tagList(
-      numericInput(
-        "lower",
-        "Indiduals observed between time",
-        min = summary_cfd(data_import()[, c("id", "time", "state")])$timeRange[1],
-        max = summary_cfd(data_import()[, c("id", "time", "state")])$timeRange[2],
-        value = summary_cfd(data_import()[, c("id", "time", "state")])$timeRange[1]
-      ),
-      numericInput(
-        "upper",
-        "and time",
-        min = 1,
-        max = floor(summary_cfd(data_import()[, c("id", "time", "state")])$timeRange[2]),
-        value = floor((
-          summary_cfd(data_import()[, c("id", "time", "state")])$timeRange[2] - summary_cfd(data_import()[, c("id", "time", "state")])$timeRange[1]
-        ) / 2)
-      )
-    )
-  })
-  
+
   ##filter on number of jump
   output$jumpInt <- renderUI({
     tagList(
@@ -187,7 +163,11 @@ shinyServer(function(input, output, session) {
   })
   
   ##Number of jump of initial dataset
-  nJump <- reactive({
+  nJump_import <- reactive({
+    validate(need(
+      is.numeric(data_import()[, "time"]),
+      'time must be numeric, please choose correct decimal symbol'
+    ))
     compute_number_jumps(data_import()[, c("id", "state", "time")], countDuplicated = FALSE)
   })
   
@@ -230,8 +210,7 @@ shinyServer(function(input, output, session) {
                  value = 0,
                  {
                    incProgress(1 / 4)
-                   p <-
-                     plotData(data_used()[, c("id", "time", "state")], addId = FALSE, addBorder =
+                   p <-plotData(data_used()[, c("id", "time", "state")], addId = FALSE, addBorder =
                                 FALSE) + labs(title = "Trajectories of the Markov process")
                    input$modPlotData
                    isolate({
@@ -272,9 +251,9 @@ shinyServer(function(input, output, session) {
     plotOfData()
   }, height = 900)
   
-  
-  #3. descriptive statistics
-  ##########################
+  ###########################
+  #3. descriptive statistics#
+  ###########################
   duration <- reactive({
     validate(need(
       is.numeric(data_used()[, "time"]),
@@ -581,7 +560,22 @@ shinyServer(function(input, output, session) {
             )
           )
       }
-      row.names(d) <- mod
+      q <- quantile(duration(), seq(0, 1, 0.25))
+      d <-
+        rbind.data.frame(
+          d,
+          data.frame(
+            mean = round(mean(duration()), 2),
+            median = round(q[3], 2),
+            Q1 = round(q[2], 2),
+            Q3 = round(q[4], 2),
+            min = round(q[1], 2),
+            max = round(q[5], 2),
+            sd = round(sd(duration()), 2),
+            nbInd = length(duration())
+          )
+        )
+      row.names(d) <- c(mod,"All")
       d
     } else if (input$choixGraphiqueStats == 'jump') {
       d <- as.data.frame(matrix(ncol = 9, nrow = 0))
@@ -605,7 +599,21 @@ shinyServer(function(input, output, session) {
           )
         )
       }
-      row.names(d) <- mod
+      q <- quantile(nJump(), seq(0, 1, 0.25))
+      d <- rbind.data.frame(
+        d,
+        data.frame(
+          mean = round(mean(nJump()), 2),
+          median = round(q[3], 2),
+          Q1 = round(q[2], 2),
+          Q3 = round(q[4], 2),
+          min = round(q[1], 2),
+          max = round(q[5], 2),
+          sd = round(sd(nJump()), 2),
+          nbInd = length(nJump())
+        )
+      )
+      row.names(d) <- c(mod,"All")
       d
       
     }
@@ -906,7 +914,7 @@ shinyServer(function(input, output, session) {
                            box(
                              width = 12,
                              title = "plot",
-                             plotlyOutput("plots", height = "1100px")
+                             shinycssloaders::withSpinner( plotlyOutput("plots", height = "1100px"))
                            )
                          ))
         
@@ -964,11 +972,11 @@ shinyServer(function(input, output, session) {
               title = "plots",
               conditionalPanel(
                 "input.choixGraphiqueStats=='jump'",
-                plotlyOutput("jumpGp", height = "1100px")
+                shinycssloaders::withSpinner( plotlyOutput("jumpGp", height = "1100px"))
               ),
               conditionalPanel(
                 "input.choixGraphiqueStats=='duration'",
-                plotlyOutput("durationGp", height = "1100px")
+                shinycssloaders::withSpinner( plotlyOutput("durationGp", height = "1100px"))
               ),
             )
           )
@@ -984,7 +992,7 @@ shinyServer(function(input, output, session) {
           column(8,
                  box(
                    width = 12,
-                   plotlyOutput("timeStateGp", height = "1100px")
+                   shinycssloaders::withSpinner( plotlyOutput("timeStateGp", height = "1100px"))
                  ))
         )
         
@@ -1099,7 +1107,7 @@ shinyServer(function(input, output, session) {
       column(6, wellPanel(h4(
         paste("Group : ", par , "(n:", nrow(nInd), ")")
       ),
-      plotOutput(plotname)))
+      shinycssloaders::withSpinner( plotOutput(plotname))))
       
     })
     do.call(tagList, plot_output_list)
@@ -1280,6 +1288,21 @@ shinyServer(function(input, output, session) {
     return(!is.null(fmca()))
   })
   
+  output$titleBoxFactorial<-renderUI({
+    
+    h4(paste0("path observed on [",min(data_used()$time),";T]"))
+  })
+  output$uiAbsorbedState<-renderUI({
+    state<-unique(data_used()[,"state"])
+    multiInput(
+      inputId = "absorbedState",
+      label = "prolong state:", 
+      choices = NULL,
+      choiceNames = state,
+      choiceValues = state
+    )
+  })
+  
   outputOptions(output, 'fmcaUploaded', suspendWhenHidden = FALSE)
   
   data_CFDA <- reactive({
@@ -1295,32 +1318,26 @@ shinyServer(function(input, output, session) {
           "all individuals must have the same time start value"
         ),
         need(
-          tmax <= maxT & tmax >= minT,
-          paste('end time must be between', minT, 'and', maxT)
+          tmax >= minT,
+          paste('end time must be greater than', minT)
         )
       )
-      idToKeep <- names(duration()[duration() + minT >= tmax])
-      length(idToKeep)
-      validate(
-        need(
-          length(idToKeep) > 1,
-          'There is only one row or less with this End time please change the value'
-        ),
-      )
-      dataKeep <- data_used()[data_used()$id %in% idToKeep, ]
-      d <- cut_data(dataKeep[, c("id", "time", "state")], tmax)
+      d <- cut_data(data_used()[, c("id", "time", "state")], Tmax=tmax, prolongLastState = input$absorbedState,NAstate=input$nameNAstate)
       d
     })
   })
   
+  output$plotDataCFDA<-renderPlot({
+    plotData(data_CFDA(),addId = FALSE,addBorder = FALSE)
+  })
   output$summaryCFDA <- renderPrint({
     summary_cfd(data_CFDA())
   })
   
   fmca <- reactive({
-    minTim <- min(data_CFDA()[, "time"])
     input$soumettre
     isolate({
+      minTim <- min(data_CFDA()[, "time"])
       validate(
         need(
           is.numeric(data_used()[, "time"]),
@@ -1349,8 +1366,8 @@ shinyServer(function(input, output, session) {
                          'There is only one row or less with this End time please change the value'
                        ),
                        need(
-                         tmax <= maxT & tmax >= minT,
-                         paste('end time must be between', minT, 'and', maxT)
+                         tmax >= minT,
+                         paste('end time must be greater than', minT)
                        )
                      )
                      if (input$typeBasis == 'spline') {
@@ -1393,15 +1410,16 @@ shinyServer(function(input, output, session) {
   
   output$valeurspropres <- renderPlotly({
     tmax = as.double(input$tpsmax)
+    min<-summary_cfd(data_used()[, c("id", "state", "time")])$timeRange[1]
     validate(
       need(
         summary_cfd(data_CFDA())$nInd > 1,
         'There is only one row or less with this End time please change the value'
       ),
       need(
-        tmax <= summary_cfd(data_used()[, c("id", "state", "time")])$timeRange[2] &
-          tmax >= summary_cfd(data_used()[, c("id", "state", "time")])$timeRange[1],
-        'end time must be between'
+        
+          tmax >= min,
+        paste('end time must be between greather than',min)
       )
     )
     if (input$cumulative) {
@@ -1467,15 +1485,20 @@ shinyServer(function(input, output, session) {
         nrow(group) == nrow(fmca()$pc),
         "can't be used as group variable"
       ))
-      plotComponent(fmca(),
+     p<- plotComponent(fmca(),
                     comp = c(
                       as.numeric(input$choix_dim1),
                       as.numeric(input$choix_dim2)
                     ),
-                    addNames = FALSE) +
-        geom_point(aes(color = as.factor(group[, input$groupVariableFactorialPlan]))) +
+                    addNames = FALSE) 
+     if(is.numeric(group[, input$groupVariableFactorialPlan]) |(is.integer(group[, input$groupVariableFactorialPlan]) & length(unique(group[, input$groupVariableFactorialPlan]))>MAXMOD)){
+       p<-p+ geom_point(aes(color = group[, input$groupVariableFactorialPlan])) +
         labs(color =input$groupVariableFactorialPlan) 
-      
+     }else{
+      p<-p+ geom_point(aes(color = as.factor(group[, input$groupVariableFactorialPlan]))) +
+         labs(color =input$groupVariableFactorialPlan) 
+       }
+      p
     }
   })
   
@@ -1732,9 +1755,19 @@ shinyServer(function(input, output, session) {
       save(results_factorial_analysis, file = file)
     }
   )
+  ################
+  ##4.Clustering #
+  ################
   
-  ##4.Clustering
-  ###############
+  output$effecCluster<-renderPrint({
+    req(input$nbclust)
+    d<-as.data.frame(table(class()))
+    prop<-round(prop.table(table(class())),4)*100
+    d<-cbind.data.frame(d,prop=as.vector(prop))
+    row.names(d)<-paste("cluster",1:input$nbclust)
+    d[,2:3]
+  })
+  
   output$nb_comp <- renderUI({
     input$soumettre
     maxi <-
@@ -1872,6 +1905,8 @@ shinyServer(function(input, output, session) {
     
   })
   
+  
+  
   output$SummaryJumpByCluster <- DT::renderDataTable({
     d <- as.data.frame(matrix(ncol = 8, nrow = 0))
     colnames(d) <-
@@ -1895,7 +1930,7 @@ shinyServer(function(input, output, session) {
         )
       )
     }
-    row.names(d) <- c(1:input$nbclust)
+    row.names(d) <- paste("cluster",1:input$nbclust)
     d
   }, extensions = c('FixedColumns', 'Buttons'), server = FALSE, options = list(
     dom = 'Btipr',
@@ -1993,7 +2028,7 @@ shinyServer(function(input, output, session) {
           nbInd = length(time)
         )
       )
-      row.names(d) <- c(1:input$nbclust, "All")
+      row.names(d) <- c(paste("cluster",1:input$nbclust), "All")
       plotname <- paste("timeSpentCluster", par, sep = "_")
       
       output[[paste0("download", plotname)]] <- downloadHandler(
@@ -2034,7 +2069,36 @@ shinyServer(function(input, output, session) {
   })
   
   
+  observe({
+    req(input$nbclust)
+    timeSpent <- time_spent_data_CFDA()
+    class_id <-data.frame(id = names(class()),
+                          res_class_cluster = as.vector(class()))
+    d2<-cbind.data.frame(as.data.frame(timeSpent[,1:ncol(timeSpent)]),id=row.names(timeSpent))
+    d1<-merge(d2,class_id,by="id")
+    mod <- colnames(timeSpent)
+    lapply(mod, function(par){
+         g<-ggplot(data=d1[,c("res_class_cluster",par)],aes(x=as.factor(res_class_cluster),y=d1[,par],fill=as.factor(res_class_cluster)))+geom_boxplot()+xlab("cluster")+ylab("time spent")+labs(fill="cluster")
+         output[[paste("timeSpentByStateCluster",par,sep="_")]]<-renderPlotly({
+           g
+         })
+      })
+    })
   
+output$timeStateGraphByAmongCluster <- renderUI({
+  req(input$nbclust)
+  mod = colnames(time_spent_data_CFDA())
+  summary_output_list <- lapply(mod, function(par) {
+    plotname <- paste("timeSpentByStateCluster", par, sep = "_")
+    column(12,
+           wellPanel(style = "background: white",
+                     h4(paste("State :", par)),
+                     shinycssloaders::withSpinner( plotlyOutput(plotname))))
+    
+  })
+  do.call(tagList, summary_output_list)
+  
+})
   ##Markov
   
   observe({
@@ -2083,7 +2147,7 @@ shinyServer(function(input, output, session) {
         plotname <- paste("graphTransitionCluster", par, sep = "_")
         column(4,
                h4(paste("Groupe : ", par, "(n :", t[par], ")")),
-               plotOutput(plotname))
+               shinycssloaders::withSpinner(plotOutput(plotname)))
       })
     } else if (input$choixStatsMarkovCluster == 'jump') {
       plot_output_list <- lapply(c(1:input$nbclust), function(par) {
