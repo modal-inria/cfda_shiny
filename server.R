@@ -24,14 +24,26 @@ if (!require('shinyWidgets'))
   install.packages("shinyWidgets")
 if (!require('shinycssloaders'))
   install.packages("shinycssloaders")
-data(care)
+if (!require('scales'))
+  install.packages("scales")
+if (!require('stringr'))
+  install.packages("stringr")
+
 MAXMOD<-12
 shinyServer(function(input, output, session) {
   ##################
   #1. Import data ##
   ##################
   
+  colorOfState<-reactive({
+    etat=unique(data_import()$state)
+    codeColor<-hue_pal()(length(etat))
+    res<-paste(paste0('"',etat,'"'),"=",paste0('"',codeColor,'"'))
+    vecColor=paste("c(",toString(res),")")
+    vecColor
+ })
   
+
   ##Import a data set
   data_import <- reactive({
     file <- input$file1
@@ -73,6 +85,7 @@ shinyServer(function(input, output, session) {
     input$applyMod
     isolate({
       ##Filter by length trajectories
+      
       if (input$filterChoiceLength == '2') {
         minT <- data %>%
           group_by(id) %>%  filter(time == min(time, na.rm = TRUE))
@@ -81,18 +94,23 @@ shinyServer(function(input, output, session) {
        if (input$upper=="" & input$lower=="") {
          idToKeep <- minT$id
        } else if (input$upper=="" & !is.na(input$lower)) {
-          lower = as.double(input$lower)
-          validate(need(!is.na(lower),"invalid time please check format"))
+         tryCatch({ lower = as.double(input$lower)},
+           error=function(cond) {
+             validate(need(FALSE,"invalid time please check format"))
+           })
           idToKeep <- minT[minT$time <= lower, "id"]$id
         } else if (!is.na(input$upper) & input$lower=="") {
-          upper = as.double(input$upper)
-          validate(need(!is.na(upper),"invalid time please check format"))
+          tryCatch({ upper = as.double(input$upper)},
+                   error=function(cond) {
+                     validate(need(FALSE,"invalid time please check format"))
+                   })
           idToKeep <- maxT[maxT$time >= upper, "id"]$id
         } else{
-          upper = as.double(input$upper)
-         lower = as.double(input$lower)
-          validate(need(!is.na(lower),"invalid time please check format"),
-                   need(!is.na(upper),"invalid time please check format"))
+         tryCatch({ upper = as.double(input$upper)
+         lower = as.double(input$lower)},
+                  error=function(cond) {
+                    validate(need(FALSE,"invalid time please check format"))
+                  })
           idToKeep <-intersect(minT[minT$time <= lower, "id"], maxT[maxT$time >= upper, "id"])$id
         }
         data <- data[data$id %in% idToKeep, ]
@@ -211,7 +229,8 @@ shinyServer(function(input, output, session) {
                  {
                    incProgress(1 / 4)
                    p <-plotData(data_used()[, c("id", "time", "state")], addId = FALSE, addBorder =
-                                FALSE) + labs(title = "Trajectories of the Markov process")
+                                FALSE,col=eval(parse(text=colorOfState()))
+                                ) + labs(title = "Trajectories of the Markov process")
                    input$modPlotData
                    isolate({
                      if (input$choixParaGroupeVisualize == "All") {
@@ -236,7 +255,9 @@ shinyServer(function(input, output, session) {
                          group = class,
                          addId = input$addId,
                          addBorder = input$addBorder,
-                         sort = input$sort
+                         sort = input$sort,
+                        col=eval(parse(text=colorOfState()))
+                         
                        ) + labs(title = input$plotDataTitle)
                    })
                    for (i in 1:3) {
@@ -346,9 +367,9 @@ shinyServer(function(input, output, session) {
     ))
     summary_output_list <- lapply(mod, function(par) {
       plotname <- paste("summary", par, sep = "_")
-      column(6, wellPanel(h4(paste(
-        "Groupe : ", par
-      )),
+      column(6, 
+             box(width=12,title=paste("Groupe : ", par),status = "danger", solidHeader = FALSE,
+      
       verbatimTextOutput(plotname)))
       
     })
@@ -370,15 +391,15 @@ shinyServer(function(input, output, session) {
                    if (input$choixGraphiqueStats == "jump") {
                      jump_gp <- data.frame(jump = as.vector(nJump()))
                      p <-
-                       ggplot(data.frame(jump_gp), aes(x = jump)) + labs(x = "Number of jump", y = "Frequency") +
+                       ggplot(data.frame(jump_gp), aes(x = jump)) + labs(x = "Number of jump", y = "Frequency",title="distribution of number of jumps") +
                        geom_bar(fill = "lightblue", color = "black")
                      
                    } else if (input$choixGraphiqueStats == "duration") {
-                     p <- hist(duration())
+                     p <- hist(duration()) +labs(title="distribution of duration of trajectories") 
                      
                    }
                    else if (input$choixGraphiqueStats == "timeState") {
-                     p <- boxplot(time_spent())
+                     p <- boxplot(time_spent()) + labs(title="distribution of time spent by state") 
                    }
                  })
     p
@@ -386,6 +407,7 @@ shinyServer(function(input, output, session) {
   
   
   output$timeStateGp <- renderPlotly({
+    req(input$groupVariableStatistics)
     validate(
       need(
         nrow(unique(data_used()[, c("id", input$groupVariableStatistics)])) == length(unique(data_used()$id)),
@@ -414,11 +436,12 @@ shinyServer(function(input, output, session) {
     p <-
       ggplot(data, aes_string(x = "state", y = "timeSpent", fill = "state")) +
       geom_boxplot() +
-      labs(x = "State", y = "Time Spent", fill = "State") + facet_wrap(input$groupVariableStatistics)
+      labs(x = "State", y = "Time Spent", fill = "State",title=paste("time spent in each state by",input$groupVariableStatistics)) + facet_wrap(input$groupVariableStatistics)
     p
   })
   
   output$durationGp <- renderPlotly({
+    req(input$groupVariableStatistics)
     validate(
       need(
         nrow(unique(data_used()[, c("id", input$groupVariableStatistics)])) == length(unique(data_used()$id)),
@@ -442,7 +465,7 @@ shinyServer(function(input, output, session) {
       unique(merge(d, data_used()[, c("id", input$groupVariableStatistics)], by =
                      "id"))
     g <-
-      ggplot(data.frame(dure_gp), aes_string(x = "duration")) + labs(x = "Duration", y = "Frequency") +
+      ggplot(data.frame(dure_gp), aes_string(x = "duration")) + labs(x = "Duration", y = "Frequency",title=paste("duration of trajectories by",input$groupVariableStatistics)) +
       geom_histogram(fill = "lightblue",
                      color = "black",
                      bins = floor(1 + log2(length(duration(
@@ -451,6 +474,7 @@ shinyServer(function(input, output, session) {
   })
   
   output$jumpGp <- renderPlotly({
+    req(input$groupVariableStatistics)
     validate(
       need(
         nrow(unique(data_used()[, c("id", input$groupVariableStatistics)])) == length(unique(data_used()$id)),
@@ -473,7 +497,7 @@ shinyServer(function(input, output, session) {
       unique(merge(d, data_used()[, c("id", input$groupVariableStatistics)], by =
                      "id"))
     g <-
-      ggplot(data.frame(jump_gp), aes_string(x = "jump")) + labs(x = "Number of jump", y = "Frequency") +
+      ggplot(data.frame(jump_gp), aes_string(x = "jump")) + labs(x = "Number of jump", y = "Frequency",title=paste("number of jumps by",input$groupVariableStatistics)) +
       geom_bar(fill = "lightblue", color = "black") + facet_wrap(input$groupVariableStatistics)
     g
   })
@@ -521,6 +545,7 @@ shinyServer(function(input, output, session) {
   ))
   
   output$summaryStatsByGroup <- DT::renderDataTable({
+    req(input$groupVariableStatistics)
     validate(
       need(
         nrow(unique(data_used()[, c("id", input$groupVariableStatistics)])) == length(unique(data_used()$id)),
@@ -737,8 +762,7 @@ shinyServer(function(input, output, session) {
     summary_output_list <- lapply(mod, function(par) {
       plotname <- paste("timeSpentGroup", par, sep = "_")
       column(12,
-             wellPanel(style = "background: white",
-                       h4(paste("State :", par)),
+             box(width=12,title=paste("State :", par),status = "danger", solidHeader = TRUE,
                        DTOutput(plotname)))
       
     })
@@ -873,7 +897,7 @@ shinyServer(function(input, output, session) {
           "input.choixGraphiqueStats=='summary'",
           box(
             width = 12,
-            title = "summary",
+            title = "summary of data set",status = "danger", solidHeader = TRUE,
             verbatimTextOutput("summary")
           )
           
@@ -884,7 +908,7 @@ shinyServer(function(input, output, session) {
                  tags$div(
                    box(
                      width = 12,
-                     title = "variable description",
+                     title = "summary of number of jumps",status = "danger", solidHeader = TRUE,
                      DTOutput("summaryStatsAll")
                      
                      
@@ -893,7 +917,7 @@ shinyServer(function(input, output, session) {
                      "input.choixGraphiqueStats=='jump'",
                      box(
                        width = 12,
-                       title = "table of number of jumps",
+                       title = "table of number of jumps",status = "danger", solidHeader = TRUE,
                        DTOutput("nJumpTable")
                      )
                    )
@@ -903,18 +927,18 @@ shinyServer(function(input, output, session) {
           "input.choixGraphiqueStats=='timeState'",
           column(4,
                  box(
-                   width = 12,
-                   title = "plot",
+                   width = 12,status = "danger", solidHeader = TRUE,
+                   title = "summary of time spent by state",
                    DTOutput("timeSpentAllTable")
                  ))
         ),
         conditionalPanel("input.choixGraphiqueStats!='summary'",
-                         column(
-                           8,
+                         column(8,
                            box(
                              width = 12,
-                             title = "plot",
-                             shinycssloaders::withSpinner( plotlyOutput("plots", height = "1100px"))
+                             status = "danger", 
+                             shinycssloaders::withSpinner( plotlyOutput("plots", height = "1100px"),type = getOption("spinner.type", default = 6),
+                                                           color = getOption("spinner.color", default = "#d73925"))
                            )
                          ))
         
@@ -922,12 +946,11 @@ shinyServer(function(input, output, session) {
       ),
       conditionalPanel(
         "input.choixParaGroupeStatistics=='byGroup'",
-        
         conditionalPanel(
           "input.choixGraphiqueStats=='summary'",
           box(
             width = 12,
-            title = "summury by group",
+            title = "summary of data set by group",status = "danger", solidHeader = TRUE,
             uiOutput("summaryGp")
           )
           
@@ -938,19 +961,19 @@ shinyServer(function(input, output, session) {
                  tags$div(
                    box(
                      width = 12,
-                     title = "summary",
+                     title = "summary",status = "danger", solidHeader = TRUE,
                      DTOutput("summaryStatsByGroup")
                    ),
                    conditionalPanel(
                      "input.choixGraphiqueStats=='jump'",
                      box(
                        width = 12,
-                       title = "table of number of jumps by group",
+                       title = "table of number of jumps by group",status = "danger", solidHeader = TRUE,
                        DTOutput("nJumpTableGroupFreq")
                      ),
                      box(
                        width = 12,
-                       title = "proportion of number of jumps by group",
+                       title = "proportion of number of jumps by group",status = "danger", solidHeader = TRUE,
                        selectizeInput(
                          "tableChoiceGroupDesc",
                          "choose a table",
@@ -965,18 +988,19 @@ shinyServer(function(input, output, session) {
                      )
                    )
                  )),
-          column(
-            8,
+          column( 8,
             box(
               width = 12,
-              title = "plots",
+              status = "danger",
               conditionalPanel(
                 "input.choixGraphiqueStats=='jump'",
-                shinycssloaders::withSpinner( plotlyOutput("jumpGp", height = "1100px"))
+                shinycssloaders::withSpinner( plotlyOutput("jumpGp", height = "1100px"),type = getOption("spinner.type", default = 6),
+                                              color = getOption("spinner.color", default = "#d73925"))
               ),
               conditionalPanel(
                 "input.choixGraphiqueStats=='duration'",
-                shinycssloaders::withSpinner( plotlyOutput("durationGp", height = "1100px"))
+                shinycssloaders::withSpinner( plotlyOutput("durationGp", height = "1100px"),type = getOption("spinner.type", default = 6),
+                                              color = getOption("spinner.color", default = "#d73925"))
               ),
             )
           )
@@ -986,13 +1010,14 @@ shinyServer(function(input, output, session) {
           "input.choixGraphiqueStats=='timeState'",
           column(4,
                  box(
-                   width = 12,
+                   width = 12,status = "danger", 
                    uiOutput("timeSpentTableGp")
                  )),
           column(8,
                  box(
-                   width = 12,
-                   shinycssloaders::withSpinner( plotlyOutput("timeStateGp", height = "1100px"))
+                   width = 12,status = "danger",
+                   shinycssloaders::withSpinner( plotlyOutput("timeStateGp", height = "1100px"),type = getOption("spinner.type", default = 6),
+                                                 color = getOption("spinner.color", default = "#d73925"))
                  ))
         )
         
@@ -1064,16 +1089,16 @@ shinyServer(function(input, output, session) {
                          })
                        output[[paste("matTransition", par, sep = "_")]] <-
                          renderPrint({
-                           mark$P
+                           round(mark$P,3)
                          })
                        output[[paste("nJumpMat", par, sep = "_")]] <-
                          renderPrint({
-                           statetable(data)
+                           round(statetable(data),3)
                          })
                        
                        output[[paste("expoLaw", par, sep = "_")]] <-
                          renderPrint({
-                           mark$lambda
+                           round(mark$lambda,3)
                          })
                        
                      }
@@ -1104,10 +1129,10 @@ shinyServer(function(input, output, session) {
       plotname <- paste("graphTransition", par, sep = "_")
       nInd <-
         unique(data_used()[data_used()[, input$groupVariableMarkov] == par, c("id", input$groupVariableMarkov)])
-      column(6, wellPanel(h4(
-        paste("Group : ", par , "(n:", nrow(nInd), ")")
-      ),
-      shinycssloaders::withSpinner( plotOutput(plotname))))
+      column(6, box(width=12,title=paste("Group : ", par , "(n:", nrow(nInd), ")")
+      ,status = "danger", solidHeader = TRUE,
+      shinycssloaders::withSpinner( plotOutput(plotname),type = getOption("spinner.type", default = 6),
+                                    color = getOption("spinner.color", default = "#d73925"))))
       
     })
     do.call(tagList, plot_output_list)
@@ -1143,9 +1168,8 @@ shinyServer(function(input, output, session) {
       plotname <- paste("matTransition", par, sep = "_")
       nInd <-
         unique(data_used()[data_used()[, input$groupVariableMarkov] == par, c("id", input$groupVariableMarkov)])
-      column(6, wellPanel(h4(
-        paste("Group : ", par , "(n :", nrow(nInd), ")")
-      ),
+      column(6, box(width=12,title=paste("Group : ", par , "(n :", nrow(nInd), ")")
+      ,status="danger",solidHeader = TRUE,
       verbatimTextOutput(plotname)))
       
     })
@@ -1154,7 +1178,7 @@ shinyServer(function(input, output, session) {
   
   ##transition mat all
   output$transMatAll <- renderPrint({
-    estimateMarkovAll()$P
+    round(estimateMarkovAll()$P,3)
   })
   
   
@@ -1182,9 +1206,8 @@ shinyServer(function(input, output, session) {
       plotname <- paste("nJumpMat", par, sep = "_")
       nInd <-
         nrow(unique((data_used()[data_used()[, input$groupVariableMarkov] == par, c("id", input$groupVariableMarkov)])))
-      column(6, wellPanel(h4(
-        paste("Group : ", par , "(n:", nInd, ")")
-      ),
+      column(6, box(width=12,title=paste("Group : ", par , "(n :", nInd, ")")
+                    ,status="danger",solidHeader = TRUE,
       verbatimTextOutput(plotname)))
       
     })
@@ -1261,11 +1284,9 @@ shinyServer(function(input, output, session) {
     mod = sort(unique(data_used()[, c(input$groupVariableMarkov)]))
     plot_output_list <- lapply(mod, function(par) {
       plotname <- paste("expoLaw", par, sep = "_")
-      nInd <-
-        nrow(unique((data_used()[data_used()[, input$groupVariableMarkov] == par, c("id", input$groupVariableMarkov)])))
-      column(6, wellPanel(h4(
-        paste("Group : ", par , "(n:", nInd, ")")
-      ),
+      nInd <-nrow(unique((data_used()[data_used()[, input$groupVariableMarkov] == par, c("id", input$groupVariableMarkov)])))
+      column(6, box(width=12,title=paste("Group : ", par , "(n :", nInd, ")")
+                    ,status="danger",solidHeader = TRUE,
       verbatimTextOutput(plotname)))
       
     })
@@ -1275,7 +1296,7 @@ shinyServer(function(input, output, session) {
   
   ##exponentiel law all
   output$expoLawMarkovAll <- renderPrint({
-    estimateMarkovAll()$lambda
+    round(estimateMarkovAll()$lambda,3)
   })
   
   
@@ -1304,7 +1325,17 @@ shinyServer(function(input, output, session) {
   })
   
   outputOptions(output, 'fmcaUploaded', suspendWhenHidden = FALSE)
-  
+  color_data_CFDA<-reactive({
+    stateCFDA<-unique(data_CFDA()$state)
+    stateOrigin<-unique(data_import()$state)
+    if(length(stateCFDA)>length(stateOrigin)){
+      nonObState<-stateCFDA[!(stateCFDA%in% stateOrigin)]
+      color<-substr(colorOfState(),3,nchar(colorOfState())-1) 
+      paste0("c(",color,",",'"',nonObState,'"',"=",'"',"#565656",'")')
+    }else{
+      colorOfState()
+    }
+  })
   data_CFDA <- reactive({
     input$soumettre
     isolate({
@@ -1328,7 +1359,8 @@ shinyServer(function(input, output, session) {
   })
   
   output$plotDataCFDA<-renderPlot({
-    plotData(data_CFDA(),addId = FALSE,addBorder = FALSE)
+    plotData(data_CFDA(),addId = FALSE,addBorder = FALSE,col=eval(parse(text=color_data_CFDA()))
+             )
   })
   output$summaryCFDA <- renderPrint({
     summary_cfd(data_CFDA())
@@ -1514,10 +1546,10 @@ shinyServer(function(input, output, session) {
     req(input$choix_dim1)
     plot(fmca(),
          harm = as.numeric(input$choix_dim1),
-         addCI = input$addCI)
+         addCI = input$addCI)+ylab("a_x(t)")+scale_color_manual(values=eval(parse(text=color_data_CFDA())))
   })
   
-  output$optimalEncoding1 <- renderPlot({
+  output$optimalEncoding1 <- renderPlotly({
     optimalEncodingPlot1()
   })
   
@@ -1525,31 +1557,12 @@ shinyServer(function(input, output, session) {
     req(input$choix_dim2)
     plot(fmca(),
          harm = as.numeric(input$choix_dim2),
-         addCI = input$addCI)
+         addCI = input$addCI)+ylab("a_x(t)")+scale_color_manual(values=eval(parse(text=color_data_CFDA())))
   })
   
-  output$optimalEncoding2 <- renderPlot({
+  output$optimalEncoding2 <- renderPlotly({
     optimalEncodingPlot2()
   })
-  
-  
-  output$saveOptimalEncoding1 = downloadHandler(
-    filename =  function() {
-      paste("plotOptimalEncoding", "png", sep = ".")
-    },
-    content = function(file) {
-      ggsave(file, optimalEncodingPlot1())
-    }
-  )
-  
-  output$saveOptimalEncoding2 = downloadHandler(
-    filename =  function() {
-      paste("plotOptimalEncoding", "png", sep = ".")
-    },
-    content = function(file) {
-      ggsave(file, optimalEncodingPlot2())
-    }
-  )
   
   
   ##. EXTREME IND
@@ -1690,7 +1703,8 @@ shinyServer(function(input, output, session) {
       data_CFDA(),
       group = group,
       addBorder = F,
-      addId = F
+      addId = F,
+      col=eval(parse(text=color_data_CFDA()) )
     ) + labs(title = paste("Extreme individuals on component", input$choix_dim1))
     
   })
@@ -1712,7 +1726,8 @@ shinyServer(function(input, output, session) {
       data_CFDA(),
       group = group,
       addBorder = F,
-      addId = F
+      addId = F,
+      col=eval(parse(text=color_data_CFDA()))
     ) + labs(title = paste("Extreme individuals on component", input$choix_dim2))
   })
   
@@ -1842,6 +1857,7 @@ shinyServer(function(input, output, session) {
       group = class(),
       addId = FALSE,
       addBorder = FALSE,
+      col=eval(parse(text=color_data_CFDA())),
       sort = TRUE
     )
   })
@@ -1949,6 +1965,7 @@ shinyServer(function(input, output, session) {
     row_som <- apply(t, 1, sum)
     col_som <- apply(t, 2, sum)
     res <-rbind.data.frame(cbind.data.frame(t, total = row_som), total = c(col_som, sum(col_som)))
+    row.names(res) <- c(paste("cluster",1:input$nbclust),"total")
     res
     
   }, extensions = c('FixedColumns', 'Buttons'), server = FALSE, options = list(
@@ -1974,10 +1991,15 @@ shinyServer(function(input, output, session) {
         rbind.data.frame(cbind.data.frame(t, total = row_som),
                          total = c(col_som, sum(col_som)))
       res <- round(res, 4) * 100
+      row.names(res) <- c(paste("cluster",1:input$nbclust),"total")
     } else if (input$tableChoiceCluster == "row") {
       res <- as.data.frame.matrix(round(lprop(t), 2))
+      row.names(res) <- c(paste("cluster",1:input$nbclust),"Ensemble")
+      
     } else{
       res <- as.data.frame.matrix(round(cprop(t), 2))
+      row.names(res) <- c(paste("cluster",1:input$nbclust),"total")
+      
     }
     
     res
@@ -2059,8 +2081,7 @@ shinyServer(function(input, output, session) {
     summary_output_list <- lapply(mod, function(par) {
       plotname <- paste("timeSpentCluster", par, sep = "_")
       column(12,
-             wellPanel(style = "background: white",
-                       h4(paste("State :", par)),
+             box(width=12,title=paste("State :", par),solidHeader = TRUE,status="danger",
                        DTOutput(plotname)))
       
     })
@@ -2091,9 +2112,9 @@ output$timeStateGraphByAmongCluster <- renderUI({
   summary_output_list <- lapply(mod, function(par) {
     plotname <- paste("timeSpentByStateCluster", par, sep = "_")
     column(12,
-           wellPanel(style = "background: white",
-                     h4(paste("State :", par)),
-                     shinycssloaders::withSpinner( plotlyOutput(plotname))))
+           box(width=12,title= paste("State :", par),status="danger", solidHeader=TRUE,
+                     shinycssloaders::withSpinner( plotlyOutput(plotname),type = getOption("spinner.type", default = 6),
+                                                   color = getOption("spinner.color", default = "#d73925"))))
     
   })
   do.call(tagList, summary_output_list)
@@ -2118,7 +2139,7 @@ output$timeStateGraphByAmongCluster <- renderUI({
                        })
                      output[[paste("matTransitionCluster", par, sep = "_")]] <-
                        renderPrint({
-                         mark$P
+                         round(mark$P,3)
                        })
                      output[[paste("nJumpMatCluster", par, sep = "_")]] <-
                        renderPrint({
@@ -2126,7 +2147,7 @@ output$timeStateGraphByAmongCluster <- renderUI({
                        })
                      output[[paste("expoLawCluster", par, sep = "_")]] <-
                        renderPrint({
-                         mark$lambda
+                         round(mark$lambda,3)
                        })
                    })
     })
@@ -2139,29 +2160,30 @@ output$timeStateGraphByAmongCluster <- renderUI({
       plot_output_list <- lapply(c(1:input$nbclust), function(par) {
         plotname <- paste("matTransitionCluster", par, sep = "_")
         column(4,
-               h4(paste("Groupe : ", par, "(n :", t[par], ")")),
-               verbatimTextOutput(plotname))
+               box(width=12,status="danger", solidHeader=TRUE,title=paste("Groupe :", par, "(n :", t[par], ")"),
+               verbatimTextOutput(plotname)))
       })
     } else if (input$choixStatsMarkovCluster == 'transiGraph') {
       plot_output_list <- lapply(c(1:input$nbclust), function(par) {
         plotname <- paste("graphTransitionCluster", par, sep = "_")
         column(4,
-               h4(paste("Groupe : ", par, "(n :", t[par], ")")),
-               shinycssloaders::withSpinner(plotOutput(plotname)))
+               box(width=12,status="danger", solidHeader=TRUE,title=paste("Group :", par, "(n :", t[par], ")"),
+               shinycssloaders::withSpinner(plotOutput(plotname),type = getOption("spinner.type", default = 6),
+                                            color = getOption("spinner.color", default = "#d73925"))))
       })
     } else if (input$choixStatsMarkovCluster == 'jump') {
       plot_output_list <- lapply(c(1:input$nbclust), function(par) {
         plotname <- paste("nJumpMatCluster", par, sep = "_")
         column(4,
-               h4(paste("Groupe : ", par, "(n :", t[par], ")")),
-               verbatimTextOutput(plotname))
+               box(width=12,status="danger", solidHeader=TRUE,title=paste("Group :", par, "(n :", t[par], ")"),
+               verbatimTextOutput(plotname)))
       })
     } else{
       plot_output_list <- lapply(c(1:input$nbclust), function(par) {
         plotname <- paste("expoLawCluster", par, sep = "_")
         column(4,
-               h4(paste("Groupe : ", par, "(n :", t[par], ")")),
-               verbatimTextOutput(plotname))
+               box(width=12,status="danger", solidHeader=TRUE,title=paste("Group :", par, "(n :", t[par], ")"),
+               verbatimTextOutput(plotname)))
       })
     }
     do.call(tagList, plot_output_list)
@@ -2183,6 +2205,9 @@ output$timeStateGraphByAmongCluster <- renderUI({
   
   data_with_group_var <- reactive({
     req(input$nbclust)
+    if(length(listGroupVar)==0){
+      data_CAH()
+    }else{
     class_id <-
       data.frame(id = names(class()),
                  res_class_cluster = as.vector(class()))
@@ -2191,7 +2216,7 @@ output$timeStateGraphByAmongCluster <- renderUI({
     restData <-
       data_used()[data_used()$id %in% class_id$id, c("id", listGroupVar())]
     dataClust <- unique(merge(data, restData, by = "id"))
-    dataClust
+    dataClust}
   })
   
   output$downloadCAH <- downloadHandler(
@@ -2250,6 +2275,8 @@ output$timeStateGraphByAmongCluster <- renderUI({
       col_som <- apply(t, 2, sum)
       freq_table <-rbind.data.frame(cbind.data.frame(t, total = row_som),
                          total = c(col_som, sum(col_som)))
+      row.names(freq_table)<-c(paste("Cluster",1:input$nbclust),"total")
+      freq_table
     }
   }, extensions = c('FixedColumns', 'Buttons'), server = FALSE, options = list(
     dom = 'Btipr',
@@ -2287,11 +2314,13 @@ output$timeStateGraphByAmongCluster <- renderUI({
           rbind.data.frame(cbind.data.frame(t, total = row_som),
                            total = c(col_som, sum(col_som)))
         res <- round(res, 4) * 100
-        
+        row.names(res)<-c(paste("Cluster",1:input$nbclust),"total")
       } else if (input$tableGroupVarFiniChoiceCluster == "row") {
         res <- as.data.frame.matrix(round(lprop(t), 2))
+        row.names(res)<-c(paste("Cluster",1:input$nbclust),"Ensemble")
       } else{
         res <- as.data.frame.matrix(round(cprop(t), 2))
+        row.names(res)<-c(paste("Cluster",1:input$nbclust),"total")
       }
       res
     }
@@ -2536,7 +2565,8 @@ output$timeStateGraphByAmongCluster <- renderUI({
       group = gp$Component,
       addId = FALSE,
       addBorder = FALSE,
-      sort = TRUE
+      sort = TRUE,
+      col=eval(parse(text=color_data_CFDA()))
     )
   })
   

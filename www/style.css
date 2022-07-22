@@ -1,0 +1,50 @@
+@font-face {
+  font-family: 'InriaSans';
+  src: url('fonts/InriaSans/Web/InriaSans-Regular.eot');
+  src: url('fonts/InriaSans/Web/InriaSans-Regular.eot') format('embedded-opentype'),
+       url('fonts/InriaSans/Web/InriaSans-Regular.woff') format('woff'),
+       url('fonts/InriaSans/TTF/InriaSans-Regular.ttf') format('truetype'),
+       url('fonts/InriaSans/Web/InriaSans-Regular.svg') format('svg');
+  font-weight: normal;
+  font-style: normal;
+}
+
+body {
+  font-family: 'InriaSans', 'Source Sans Pro', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  color: #384257;
+  font-weight: 400;
+}
+
+.small-box h3 {
+  font-size: 30px;
+  font-weight: 600;
+}
+
+.small-box .icon-large {
+  top: 9px;
+  right: 12px;
+  font-size: 50px;
+}
+
+.skin-red .main-header .logo {
+  background-color: #e63312;
+}
+
+.skin-red .main-header .navbar {
+  background-color: #e63312;  
+}
+
+.bg-red {
+  background-color: #e63312 !important;;
+}
+.box.box-solid.box-danger > .box-header {
+  background-color: #e63312;
+}
+
+.box.box-solid.box-danger {
+    border: 1px solid #e63312;
+}
+
+.skin-red .sidebar-menu > li.active > a, .skin-red .sidebar-menu > li:hover > a {
+    border-left-color: #e63312;
+}

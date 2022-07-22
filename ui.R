@@ -26,6 +26,15 @@ if (!require('shinycssloaders'))
   install.packages("shinycssloaders")
 if (!require('dashboardthemes'))
   install.packages("dashboardthemes")
+if (!require('scales'))
+  install.packages("scales")
+if (!require('stringr'))
+  install.packages("stringr")
+js <- '.nav-tabs-custom .nav-tabs li.active {
+    border-top-color: #d73925;font-weight: bold;
+}
+"'
+
 
 ui<-dashboardPage(
   dashboardHeader(title = "CFDA"),
@@ -44,10 +53,19 @@ ui<-dashboardPage(
         menuSubItem("clustering", tabName = "clustering")
       ),
       menuItem("Simulate a mixture model", tabName = "simulateMarkov"),
-      menuItem("Help", tabName = "help")
+      menuItem("Help", tabName = "help"),
+      
+        div(style="",tags$img(src = "inria_logo.png", width="100px"))
     )
   ),
-  dashboardBody(style = "height: auto;font-size:20px;",   
+  dashboardBody(
+    tags$style(js),
+                tags$head(
+                  tags$style(".progress-bar{background-color:#d73925;}"),
+                  tags$style(HTML('.js-irs-0 .irs-single, .js-irs-0 .irs-bar-edge, .js-irs-0 .irs-bar {
+                                                  background: #d73925;}')),
+                  includeCSS(path = "www/style.css")
+                ),
                 fluidRow(
                   tabItems(
                     tabItem(
@@ -56,10 +74,13 @@ ui<-dashboardPage(
                       ##################
                       tabName = "importData",
                       box(
-                        width = 4,
+                        width = 12,
                         title = "Import dataset and filter data",
+                        status="danger",
+                        solidHeader = TRUE, 
                         box(
-                          width = 12,
+                          width = 6,
+                          status="danger",
                           fileInput(
                             "file1",
                             "Import file (file must have at least 3 columns named : id, time and state)",
@@ -78,9 +99,9 @@ ui<-dashboardPage(
                             individual = TRUE,
                             checkIcon = list(
                               yes = tags$i(class = "fa fa-circle",
-                                           style = "color: steelblue"),
+                                           style = "color: red"),
                               no = tags$i(class = "fa fa-circle-o",
-                                          style = "color: steelblue")
+                                          style = "color: red")
                             )
                           ),
                           radioGroupButtons(
@@ -90,23 +111,22 @@ ui<-dashboardPage(
                             individual = TRUE,
                             checkIcon = list(
                               yes = tags$i(class = "fa fa-circle",
-                                           style = "color: steelblue"),
+                                           style = "color: red"),
                               no = tags$i(class = "fa fa-circle-o",
-                                          style = "color: steelblue")
+                                          style = "color: red")
                             )
                           )
                         ),
                         
                         conditionalPanel(
                           "output.fileUploaded",
-                          box(
-                            width = 12,
+                          box( title="Data selection",status="danger",
+                            width = 6,
                             checkboxInput("plotDataOptions", "data selection options", value =
                                             T),
                             conditionalPanel(
                               "input.plotDataOptions",
                               fluidRow(
-                                h3("Data selection"),
                                 column(
                                   4,
                                   hr(),
@@ -116,11 +136,8 @@ ui<-dashboardPage(
                                     "",
                                     choices = c("All available" = "1", "Filter" = "2"),
                                     selected = "1",
-                                    status = "primary",
-                                    checkIcon = list(
-                                      yes = icon("ok", lib = "glyphicon"),
-                                      no = icon("remove", lib = "glyphicon")
-                                    )
+                                    status = "danger"
+                                    
                                   ),
                                   conditionalPanel("input.filterChoiceLength=='2'", 
                                           textInput("lower", "Indiduals observed between time", placeholder = "no space between digits and decimal separateur must be the dot"),
@@ -135,11 +152,7 @@ ui<-dashboardPage(
                                     "",
                                     choices = c("All available" = "1", "Filter" = "2"),
                                     selected = "1",
-                                    status = "primary",
-                                    checkIcon = list(
-                                      yes = icon("ok", lib = "glyphicon"),
-                                      no = icon("remove", lib = "glyphicon")
-                                    )
+                                    status = "danger"
                                   ),
                                   conditionalPanel("input.filterChoiceJump=='2'", uiOutput("jumpInt"))
                                 ),
@@ -152,11 +165,7 @@ ui<-dashboardPage(
                                     "",
                                     choices = c("All available" = "1", "Filter" = "2"),
                                     selected = "1",
-                                    status = "primary",
-                                    checkIcon = list(
-                                      yes = icon("ok", lib = "glyphicon"),
-                                      no = icon("remove", lib = "glyphicon")
-                                    )
+                                    status = "danger"
                                   ),
                                   conditionalPanel(
                                     "input.filterChoicePercentage=='2'",
@@ -180,10 +189,16 @@ ui<-dashboardPage(
                       ),
                       conditionalPanel(
                         "output.fileUploaded",
-                        box(title = "data table", width = 8, DTOutput("head")),
+                        box(title = "data table", status="danger",
+                            solidHeader = TRUE, width = 8, 
+                            shinycssloaders::withSpinner(
+                              DTOutput("head"),type = getOption("spinner.type", default = 6),
+                              color = getOption("spinner.color", default = "#d73925"))
+                            ),
                         box(
                           title = "summary",
-                          width = 8,
+                          width = 4,status="danger",
+                          solidHeader = TRUE, 
                           verbatimTextOutput("Resume")
                         )
                       )
@@ -195,8 +210,7 @@ ui<-dashboardPage(
                       tabName = "visualizeData",
                       conditionalPanel(
                         "output.fileUploaded",
-                        box(width=2,
-                          tags$h3("parameter"),
+                        box(width=2,title = "options",status = "danger", solidHeader = TRUE,
                           checkboxInput("addId", "Add id labels in the graph", FALSE),
                           checkboxInput("addBorder", "Add border in the graph", FALSE),
                           checkboxInput("sort", "sort plot by the time spent in the first state"),
@@ -216,7 +230,7 @@ ui<-dashboardPage(
                           
                           #style = "unite",
                           #icon = icon("gear"),
-                         # status = "primary",
+                         # status = "danger",
                          # width = "300px",
                          # animate = animateOptions(
                          #   enter = animations$fading_entrances$fadeInLeftBig,
@@ -225,10 +239,11 @@ ui<-dashboardPage(
                         ),
                         box(
                           width = 10,
-                          title = "plot data",
+                          title = "plot of trajectories",status = "danger", solidHeader = TRUE,
                           height = 1000,
                           shinycssloaders::withSpinner(
-                          plotOutput("traj"))
+                          plotOutput("traj"),type = getOption("spinner.type", default = 6),
+                          color = getOption("spinner.color", default = "#d73925"))
                         ),
                         plotOutput("test")
                       ),
@@ -241,7 +256,8 @@ ui<-dashboardPage(
                       tabName = "descriptiveStatistics",
                       conditionalPanel(
                         "output.fileUploaded",
-                        box(width = 12,
+                        tags$div(style="margin-left: auto;margin-right: auto;",
+                        box(width = 12,title = "Descriptive statistics options",status = "danger", solidHeader = TRUE,
                             fluidRow(
                               column(
                                 4,
@@ -257,8 +273,7 @@ ui<-dashboardPage(
                                   )
                                 )
                               ),
-                              column(
-                                4,
+                              column(4,
                                 radioButtons(
                                   "choixParaGroupeStatistics",
                                   "choose an option",
@@ -270,7 +285,7 @@ ui<-dashboardPage(
                                 "input.choixParaGroupeStatistics=='byGroup'",
                                 column(4, uiOutput("groupVarStatistics"))
                               )
-                            )),
+                            ))),
                         uiOutput("statsRes")
                       ),
                       conditionalPanel(
@@ -283,7 +298,7 @@ ui<-dashboardPage(
                       conditionalPanel(
                         "output.fileUploaded",
                         box(
-                          width = 12,
+                          width = 12,title="plots options",status="danger", solidHeader = TRUE,
                           column(
                             6,
                             radioButtons(
@@ -310,7 +325,8 @@ ui<-dashboardPage(
                             conditionalPanel(
                               "input.choixParaGroupeMarkov=='All'",
                               shinycssloaders::withSpinner(
-                              plotOutput("transGraphAll"))
+                              plotOutput("transGraphAll"),type = getOption("spinner.type", default = 6),
+                              color = getOption("spinner.color", default = "#d73925"))
                             )
                           )
                           ,
@@ -342,13 +358,15 @@ ui<-dashboardPage(
                               "input.choixParaGroupeMarkov=='byGroup'",
                               shinycssloaders::withSpinner(
                               plotlyOutput("probaStateByGroup", height =
-                                             "800px"))
+                                             "800px"),type = getOption("spinner.type", default = 6),
+                              color = getOption("spinner.color", default = "#d73925"))
                               
                             ),
                             conditionalPanel(
                               "input.choixParaGroupeMarkov=='All'",
                               shinycssloaders::withSpinner(plotlyOutput("probaStateAll", height =
-                                             "800px"))
+                                             "800px"),type = getOption("spinner.type", default = 6),
+                                             color = getOption("spinner.color", default = "#d73925"))
                             )
                           ),
                           tabPanel(
@@ -380,9 +398,12 @@ ui<-dashboardPage(
                                tags$div(
                                  box(
                                    width = 12,
-                                   
+                                   title="factorial analysis parameters",
+                                   status="danger",
+                                   solidHeader = TRUE,
                                    box(
                                      width = 12,
+                                     status="danger",
                                      uiOutput("titleBoxFactorial"),
                                      textInput("tpsmax", "T:", placeholder = "no space between digits and decimal separateur must be the dot"),
                                      uiOutput("uiAbsorbedState"),
@@ -390,6 +411,7 @@ ui<-dashboardPage(
                                    ),
                                    box(
                                      width = 12,
+                                     status="danger",
                                      title = "optimal encoding function parameters",
                                      selectizeInput(
                                        "typeBasis",
@@ -424,7 +446,8 @@ ui<-dashboardPage(
                                  ),
                                  conditionalPanel(
                                    "output.fmcaUploaded",
-                                   box(
+                                   box(status="danger",
+                                       solidHeader = TRUE,
                                      width = 12,
                                      title = "summary of the dataset used for the factorial analysis",
                                      verbatimTextOutput("summaryCFDA")
@@ -441,56 +464,52 @@ ui<-dashboardPage(
                                      plotOutput("plotDataCFDA",height="1100px")),
                             tabPanel(
                               "eigen values",
-                              wellPanel(shinycssloaders::withSpinner(plotlyOutput("valeurspropres"))),
-                              wellPanel(fluidRow(
-                                column(9, verbatimTextOutput("eigenvaluesTable")),
-                                column(
-                                  3,
+                              box(width=12,
+                                  status="danger",
+                                  solidHeader = FALSE,
+                                  shinycssloaders::withSpinner(plotlyOutput("valeurspropres"),type = getOption("spinner.type", default = 6),
+                                                               color = getOption("spinner.color", default = "#d73925"))
+                                  ),
+                              fluidRow(
+                                column(9, box(width=12,title="eigen value table",status="danger",solidHeader = TRUE,verbatimTextOutput("eigenvaluesTable"))),
+                                column(3,
                                   h4("Eigen values graph options"),
                                   checkboxInput("cumulative", "cumulative")
                                 )
-                              ))
+                              )
                             ),
                             tabPanel(
                               "factorial plan",
-                              h4("Factorial plan"),
-                              wellPanel(style = "background: white;",
+                              fluidRow(box(width=12,title="Factorial plan",status="danger",solidHeader = TRUE,
                                         fluidRow(
-                                          column(10,
-                                                 shinycssloaders::withSpinner(plotlyOutput("planfact"))),
-                                          column(
-                                            2,
+                                          box(width=10,status="danger",solidHeader = FALSE,shinycssloaders::withSpinner(plotlyOutput("planfact"),type = getOption("spinner.type", default = 6),
+                                                                                                                        color = getOption("spinner.color", default = "#d73925"))),
+                                          box(width=2,status="danger",solidHeader = FALSE,
                                             uiOutput("dim1"),
                                             uiOutput("dim2"),
                                             uiOutput("groupVarFactorialPlan"),
                                             checkboxInput("addCI", "add confidence interval")
                                           )
                                         )),
-                              h4("Optimal encoding function"),
-                              fluidRow(column(
-                                6 ,
-                                wellPanel(
-                                  style = "background: white;",
-                                  shinycssloaders::withSpinner(plotOutput("optimalEncoding1")),
-                                  downloadButton("saveOptimalEncoding1")
-                                )
+                              box(width=12,title="Optimal encoding function",status="danger",solidHeader = TRUE,
+                              fluidRow(box(width=6 ,status="danger",solidHeader = FALSE,
+                                  shinycssloaders::withSpinner(plotlyOutput("optimalEncoding1"),type = getOption("spinner.type", default = 6),
+                                                               color = getOption("spinner.color", default = "#d73925"))
+                                  
                               ),
-                              column(
-                                6,
-                                wellPanel(
-                                  style = "background: white;",
-                                  shinycssloaders::withSpinner(plotOutput("optimalEncoding2")),
-                                  downloadButton("saveOptimalEncoding2")
-                                )
+                              box(width=6,status="danger",solidHeader = FALSE,
+                                  shinycssloaders::withSpinner(plotlyOutput("optimalEncoding2"),type = getOption("spinner.type", default = 6),
+                                                               color = getOption("spinner.color", default = "#d73925"))
                                 
-                              ))
-                            ),
+                                
+                              )))
+                            )),
                             tabPanel(
-                              "extrem individuals",
-                              wellPanel(style = "background: white;",
-                                        fluidRow(
-                                          column(12,
-                                                 shinycssloaders::withSpinner(plotlyOutput("planfactExtremeIndividuals"))),
+                              "extrem individuals", 
+                                fluidRow(
+                                          box(width=12,title="Factorial plan with extrem individuals", status="danger",solidHeader = TRUE,
+                                                 shinycssloaders::withSpinner(plotlyOutput("planfactExtremeIndividuals"),type = getOption("spinner.type", default = 6),
+                                                                              color = getOption("spinner.color", default = "#d73925"))),
                                           dropdown(
                                             uiOutput("extremComp1ui"),
                                             uiOutput("extremComp2ui"),
@@ -498,27 +517,31 @@ ui<-dashboardPage(
                                             uiOutput("dim2Extrem"),
                                             style = "unite",
                                             icon = icon("gear"),
-                                            status = "primary",
+                                            status = "danger",
                                             width = "300px",
+                                            label="click to see graph options",
                                             animate = animateOptions(
                                               enter = animations$fading_entrances$fadeInLeftBig,
                                               exit = animations$fading_exits$fadeOutRightBig
                                             )
                                           ),
                                           
-                                        )),
-                              wellPanel(
-                                style = "background: white;",
+                                        
+                              box(width=12,title="Plot of trajectories of extrem individuals",status="danger",solidHeader = TRUE,
+                                  box(width=12,status="danger",solidHeader = FALSE,
                                 uiOutput("axe1"),
-                                shinycssloaders::withSpinner(plotOutput("plotDataExtremAxe1")),
-                                downloadButton("downloadPlotDataExtremAxe1"),
+                                shinycssloaders::withSpinner(plotOutput("plotDataExtremAxe1"),type = getOption("spinner.type", default = 6),
+                                                             color = getOption("spinner.color", default = "#d73925")),
+                                downloadButton("downloadPlotDataExtremAxe1")),
                                 hr(),
+                                box(width=12,status="danger",solidHeader = FALSE,
                                 uiOutput("axe2"),
-                                shinycssloaders::withSpinner(plotOutput("plotDataExtremAxe2")),
-                                downloadButton("downloadPlotDataExtremAxe2"),
+                                shinycssloaders::withSpinner(plotOutput("plotDataExtremAxe2"),type = getOption("spinner.type", default = 6),
+                                                             color = getOption("spinner.color", default = "#d73925")),
+                                downloadButton("downloadPlotDataExtremAxe2")),
                               )
                             )
-                            
+                            )
                           )
                         )
                         
@@ -535,10 +558,9 @@ ui<-dashboardPage(
                       tabName = "clustering",
                       conditionalPanel(
                         "output.fmcaUploaded",
-                        box(width = 8,
+                        box(width = 8,title="clustering options",status="danger",solidHeader = TRUE,
                             fluidRow(
-                              column(
-                                3,
+                              column(3,
                                 radioButtons(
                                   inputId = "compsCAH",
                                   label = "Select one",
@@ -549,8 +571,7 @@ ui<-dashboardPage(
                                   selected = 2
                                 )
                               ),
-                              column(
-                                3,
+                              column(3,
                                 conditionalPanel("input.compsCAH==1",
                                                  uiOutput("nb_comp")),
                                 conditionalPanel(
@@ -564,8 +585,7 @@ ui<-dashboardPage(
                                   )
                                 )
                               ),
-                              column(
-                                3,
+                              column(3,
                                 selectizeInput(
                                   "method",
                                   "select a method",
@@ -574,8 +594,7 @@ ui<-dashboardPage(
                                     "ward.D2" = "ward.D2",
                                     "ward.D" = "ward.D",
                                     "single" = "single",
-                                    "complete" =
-                                      "complete",
+                                    "complete" ="complete",
                                     "average" = "average",
                                     "centroid" = "centroid",
                                     "median" = "median",
@@ -583,12 +602,12 @@ ui<-dashboardPage(
                                   )
                                 )
                               ),
-                              column(3, actionButton("clusteringSubmit", "submit",style=" margin-left: auto;margin-right: auto;"))
+                              column(3, div(style="margin-left: auto;margin-right: auto;",actionButton("clusteringSubmit", "submit")))
                             )),
                         conditionalPanel(
                           "input.clusteringSubmit>0",
                           box(
-                            width = 4,
+                            width = 4,title="number of clusters",status="danger",solidHeader = TRUE,
                             uiOutput("clus"),
                             downloadButton("downloadCAH", "download clusting results")
                           )
@@ -603,9 +622,9 @@ ui<-dashboardPage(
                             width = 12,
                             title = "dendogram",
                             fluidRow(
-                              column(11, shinycssloaders::withSpinner(plotOutput("dendogramme", height = "900px"))),
-                              column(
-                                1,
+                              column(11, shinycssloaders::withSpinner(plotOutput("dendogramme", height = "900px"),type = getOption("spinner.type", default = 6),
+                                                                      color = getOption("spinner.color", default = "#d73925"))),
+                              column(1,
                                 checkboxInput(inputId = "couper", label = "cut dendogram?"),
                                 downloadButton("downloadDendogram")
                               )
@@ -613,14 +632,13 @@ ui<-dashboardPage(
                           ),
                           tabPanel(title = "Cluster",
                                    fluidRow(
-                                     column(10, shinycssloaders::withSpinner(plotOutput("groupe", height = "900px"))),
-                                     column(2,
-                                     tags$div(
-                                       column(12,downloadButton("downloadGroupPlot")),
-                                       column(12,verbatimTextOutput("effecCluster"))
-                                      )
+                                     box(width=10, title="plot of cluster",status="danger", solidHeader=TRUE,shinycssloaders::withSpinner(plotOutput("groupe", height = "900px"),type = getOption("spinner.type", default = 6),
+                                                                                                                                          color = getOption("spinner.color", default = "#d73925"))),
+                                     box(width=2,title="cluster repartition",status="danger", solidHeader=TRUE,verbatimTextOutput("effecCluster")),
+                                     downloadButton("downloadGroupPlot")
                                      )
-                                   )),
+                                     
+                                   ),
                           tabPanel(title = "descriptives statistics by cluster",
                                    fluidRow(
                                      column(4,
@@ -639,17 +657,17 @@ ui<-dashboardPage(
                                            "input.choixGraphiqueStatsCluster=='jump'",
                                            box(
                                              width = 12,
-                                             title = "summary of number ob jumps",
+                                             title = "summary of number ob jumps",status="danger", solidHeader=TRUE,
                                              DTOutput("SummaryJumpByCluster")
                                            ),
                                            box(
                                              width = 12,
-                                             title = "frenquencies table of number of jumps",
+                                             title = "frenquencies table of number of jumps",status="danger", solidHeader=TRUE,
                                              DTOutput("freqJumpByCluster")
                                            ),
                                            box(
                                              width = 12,
-                                             title = "proportion table of number of jumps",
+                                             title = "proportion table of number of jumps",status="danger", solidHeader=TRUE,
                                              selectizeInput(
                                                "tableChoiceCluster",
                                                "choose a table",
@@ -674,14 +692,15 @@ ui<-dashboardPage(
                                      column(8,
                                        conditionalPanel(
                                          "input.choixGraphiqueStatsCluster=='jump'",
-                                         wellPanel(style = "background: white;", shinycssloaders::withSpinner(plotlyOutput("nJumpGraphByCluster", height =
-                                                                                                "1100px")))
+                                         box(width=12,status="danger", solidHeader=TRUE,title="Number of jumps by cluster", shinycssloaders::withSpinner(plotlyOutput("nJumpGraphByCluster", height =
+                                                                                                "1100px"),type = getOption("spinner.type", default = 6),
+                                                                                                color = getOption("spinner.color", default = "#d73925")))
                                        )
                                      )
                                      ,
                                      conditionalPanel(
                                        "input.choixGraphiqueStatsCluster!='jump'",
-                                       column(8,
+                                       column(8,align="center",
                                               selectizeInput(
                                                 "selectTimeSpentClusterPlot",
                                                 "choose a graph",
@@ -689,10 +708,11 @@ ui<-dashboardPage(
                                                   "state among cluster" = "stateAmoungCluster",
                                                   "state within cluster" = "stateWithinCluster"
                                                 )),
-                                              wellPanel(
-                                                style = "background: white;",
+                                              box(width=12,status="danger", solidHeader=TRUE,
+                                                title = "time spent in each state by cluster",
                                                 conditionalPanel("input.selectTimeSpentClusterPlot=='stateWithinCluster'",
-                                                 shinycssloaders::withSpinner(plotlyOutput("timeStateGraphByCluster", height = "1100px"))),
+                                                 shinycssloaders::withSpinner(plotlyOutput("timeStateGraphByCluster", height = "1100px"),type = getOption("spinner.type", default = 6),
+                                                                              color = getOption("spinner.color", default = "#d73925"))),
                                                 conditionalPanel("input.selectTimeSpentClusterPlot!='stateWithinCluster'",
                                                 uiOutput("timeStateGraphByAmongCluster"))
                                                 
@@ -701,8 +721,7 @@ ui<-dashboardPage(
                                    )),
                           tabPanel(title = "markov chain by cluster",
                                    fluidRow(
-                                     column(
-                                       12,
+                                     column(12,
                                        selectizeInput(
                                          "choixStatsMarkovCluster",
                                          "choose a statistics",
@@ -731,10 +750,8 @@ ui<-dashboardPage(
                                   "select the type of the variable",
                                   choices = c(
                                     "numeric" = "as.numeric",
-                                    "factor" =
-                                      "as.factor",
-                                    "integer" =
-                                      "as.integer"
+                                    "factor" ="as.factor",
+                                    "integer" ="as.integer"
                                   )
                                 )
                               ),
@@ -742,12 +759,12 @@ ui<-dashboardPage(
                               conditionalPanel(
                                 "input.typeVarGroup == 'as.integer' || input.typeVarGroup == 'as.factor' ",
                                 box(
-                                  width = 12,
+                                  width = 6, status="danger", solidHeader=TRUE,
                                   title = "frenquencies ",
                                   DTOutput("freqGroupVarFiniByCluster")
                                 ),
                                 box(
-                                  width = 12,
+                                  width = 6,status="danger", solidHeader=TRUE,
                                   title = "proportion ",
                                   selectizeInput(
                                     "tableGroupVarFiniChoiceCluster",
@@ -766,7 +783,7 @@ ui<-dashboardPage(
                                 "input.typeVarGroup=='as.numeric'",
                                 box(
                                   width = 12,
-                                  title = "summary",
+                                  title = "summary",status="danger", solidHeader=TRUE,
                                   DTOutput("numVarGroupCluster")
                                 )
                                 
@@ -818,12 +835,9 @@ ui<-dashboardPage(
                       tabName = "simulateMarkov",
                       box(
                         width = 4,
-                        
-                        checkboxInput(inputId = "optionsSimulation", label = "show simulation options"),
-                        conditionalPanel(
-                          "input.optionsSimulation",
-                          numericInput("nbComponent", "mixture component", value =
-                                         2),
+                        title="simulation options",
+                        status="danger", solidHeader=TRUE,
+                          numericInput("nbComponent", "mixture component", value = 2),
                           numericInput(
                             "nbStateMix",
                             "number of state",
@@ -844,14 +858,14 @@ ui<-dashboardPage(
                             value = 10
                           ),
                           uiOutput("probabilityGp"),
-                          box(width = 12, title = "transition matrix",
+                          box(width = 12, title = "transition matrix", status="danger",
                               uiOutput("listMatrix")),
-                          box(width = 12, title = "sejourn time",
-                              uiOutput("listLambda"), ),
+                          box(width = 12, title = "sejourn time", status="danger",
+                              uiOutput("listLambda")),
                           box(
                             width = 12,
-                            title = "initial law",
-                            uiOutput("listInitialLaw"),
+                            title = "initial law", status="danger",
+                            uiOutput("listInitialLaw")
                           ),
                           actionButton("SimulateMixtureModel", "Simulate mixture model"),
                           conditionalPanel(
@@ -859,7 +873,7 @@ ui<-dashboardPage(
                             downloadButton("downloadDataMix", "Download")
                           )
                           
-                        )
+                        
                         
                       ),
                       conditionalPanel(
@@ -870,11 +884,12 @@ ui<-dashboardPage(
                                    dataTableOutput("headSimulatedMix")),
                           tabPanel("Plot of data",
                                    shinycssloaders::withSpinner(plotOutput("trajSimulatedMix", height =
-                                                "900px")))
+                                                "900px"),type = getOption("spinner.type", default = 6),
+                                                color = getOption("spinner.color", default = "#d73925")))
                         )
                       )
                     )
                     
                   )
-                ))
+                )),skin = "red"
 )
