@@ -2555,7 +2555,12 @@ output$timeStateGraphByAmongCluster <- renderUI({
   ##Data frame output
   output$headSimulatedMix <- renderDataTable({
     mixModelData()
-  })
+  }, extensions = 'Buttons', server = FALSE, options = list(
+    dom = 'Brtip',
+    scrollX = TRUE,
+    buttons = c('copy', 'csv', 'excel', 'pdf'),
+    rownames = FALSE
+  ))
   
   ##Traj output
   output$trajSimulatedMix <- renderPlot({
@@ -2565,8 +2570,7 @@ output$timeStateGraphByAmongCluster <- renderUI({
       group = gp$Component,
       addId = FALSE,
       addBorder = FALSE,
-      sort = TRUE,
-      col=eval(parse(text=color_data_CFDA()))
+      sort = TRUE
     )
   })
   

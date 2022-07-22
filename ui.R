@@ -867,14 +867,8 @@ ui<-dashboardPage(
                             title = "initial law", status="danger",
                             uiOutput("listInitialLaw")
                           ),
-                          actionButton("SimulateMixtureModel", "Simulate mixture model"),
-                          conditionalPanel(
-                            "input.SimulateMixtureModel>0",
-                            downloadButton("downloadDataMix", "Download")
-                          )
-                          
-                        
-                        
+                          actionButton("SimulateMixtureModel", "Simulate mixture model")
+
                       ),
                       conditionalPanel(
                         "input.SimulateMixtureModel>0",
