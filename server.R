@@ -399,7 +399,7 @@ shinyServer(function(input, output, session) {
                      
                    }
                    else if (input$choixGraphiqueStats == "timeState") {
-                     p <- boxplot(time_spent()) + labs(title="distribution of time spent by state") 
+                     p <- boxplot(time_spent()) + labs(title="distribution of time spent by state") +scale_fill_manual(values=eval(parse(text=colorOfState())))
                    }
                  })
     p
@@ -436,7 +436,7 @@ shinyServer(function(input, output, session) {
     p <-
       ggplot(data, aes_string(x = "state", y = "timeSpent", fill = "state")) +
       geom_boxplot() +
-      labs(x = "State", y = "Time Spent", fill = "State",title=paste("time spent in each state by",input$groupVariableStatistics)) + facet_wrap(input$groupVariableStatistics)
+      labs(x = "State", y = "Time Spent", fill = "State",title=paste("time spent in each state by",input$groupVariableStatistics)) + facet_wrap(input$groupVariableStatistics)+scale_fill_manual(values=eval(parse(text=colorOfState())))
     p
   })
   
@@ -1665,20 +1665,20 @@ shinyServer(function(input, output, session) {
       factor(
         rep("not extrem", length(ids)),
         levels = c(
-          "extrem on axe 2",
-          "extrem on axe 1",
+          "extrem on axis 2",
+          "extrem on axis 1",
           "not extrem",
-          "extrem on both axes"
+          "extrem on both axis"
         )
       )
-    group[ids %in% extremIndividuals()$minpc1] = "extrem on axe 1"
-    group[ids %in% extremIndividuals()$maxpc1] = "extrem on axe 1"
-    group[ids %in% extremIndividuals()$minpc2] = "extrem on axe 2"
-    group[ids %in% extremIndividuals()$maxpc2] = "extrem on axe 2"
+    group[ids %in% extremIndividuals()$minpc1] = "extrem on axis 1"
+    group[ids %in% extremIndividuals()$maxpc1] = "extrem on axis 1"
+    group[ids %in% extremIndividuals()$minpc2] = "extrem on axis 2"
+    group[ids %in% extremIndividuals()$maxpc2] = "extrem on axis 2"
     group[ids %in% intersect(extremIndividuals()$minpc1, extremIndividuals()$minpc2)] =
-      "extrem on both axes"
+      "extrem on both axis"
     group[ids %in% intersect(extremIndividuals()$maxpc1, extremIndividuals()$maxpc2)] =
-      "extrem on both axes"
+      "extrem on both axis"
     p <-
       plotComponent(fmca(),
                     comp = c(
@@ -1916,7 +1916,7 @@ shinyServer(function(input, output, session) {
     p <-
       ggplot(data, aes_string(x = "state", y = "timeSpent", fill = "state")) +
       geom_boxplot() +
-      labs(x = "State", y = "Time Spent", fill = "State") + facet_wrap("cluster")
+      labs(x = "State", y = "Time Spent", fill = "State") + facet_wrap("cluster")+scale_fill_manual(values=eval(parse(text=color_data_CFDA())))
     p
     
   })
@@ -2195,8 +2195,8 @@ output$timeStateGraphByAmongCluster <- renderUI({
     ldata <- lapply(c(1:input$nbclust), function(par) {
       idToKeep <- names(class()[class() == par])
       data <- data_CFDA()[data_CFDA()$id %in% idToKeep, ]
-      restData <-
-        data_used()[data_used()$id %in% idToKeep, c("id", listGroupVar())]
+      if(listGroupVar())
+      restData <-data_used()[data_used()$id %in% idToKeep, c("id", listGroupVar())]
       dataClust <- unique(merge(data, restData, by = "id"))
       dataClust
     })
