@@ -36,7 +36,7 @@ shinyServer(function(input, output, session) {
   ##################
   
   colorOfState<-reactive({
-    etat=unique(data_import()$state)
+    etat=sort(unique(data_used()$state))
     codeColor<-hue_pal()(length(etat))
     res<-paste(paste0('"',etat,'"'),"=",paste0('"',codeColor,'"'))
     vecColor=paste("c(",toString(res),")")
@@ -213,7 +213,7 @@ shinyServer(function(input, output, session) {
   })
   output$groupVarVisualize <- renderUI({
     selectizeInput("groupVariableVisualize",
-                   "select a group variable",
+                   "Select a group variable",
                    choice = c(listGroupVar()))
   })
   
@@ -272,6 +272,15 @@ shinyServer(function(input, output, session) {
     plotOfData()
   }, height = 900)
   
+  output$downloadPlotTraj = downloadHandler(
+    filename =  function() {
+      paste("plotData", "png", sep = ".")
+    },
+    content = function(file) {
+      ggsave(file, plotOfData() , device = "png")
+    }
+  )
+  
   ###########################
   #3. descriptive statistics#
   ###########################
@@ -302,7 +311,7 @@ shinyServer(function(input, output, session) {
   #Variable de groupe et plot
   output$groupVarStatistics <- renderUI({
     selectizeInput("groupVariableStatistics",
-                   "select a group variable",
+                   "Select a group variable",
                    choice = c(listGroupVar()))
   })
   
@@ -368,7 +377,7 @@ shinyServer(function(input, output, session) {
     summary_output_list <- lapply(mod, function(par) {
       plotname <- paste("summary", par, sep = "_")
       column(6, 
-             box(width=12,title=paste("Groupe : ", par),status = "danger", solidHeader = FALSE,
+             box(width=12,title=paste("Group : ", par),status = "danger", solidHeader = FALSE,
       
       verbatimTextOutput(plotname)))
       
@@ -391,15 +400,15 @@ shinyServer(function(input, output, session) {
                    if (input$choixGraphiqueStats == "jump") {
                      jump_gp <- data.frame(jump = as.vector(nJump()))
                      p <-
-                       ggplot(data.frame(jump_gp), aes(x = jump)) + labs(x = "Number of jump", y = "Frequency",title="distribution of number of jumps") +
+                       ggplot(data.frame(jump_gp), aes(x = jump)) + labs(x = "Number of jump", y = "Frequency",title="Distribution of number of jumps") +
                        geom_bar(fill = "lightblue", color = "black")
                      
                    } else if (input$choixGraphiqueStats == "duration") {
-                     p <- hist(duration()) +labs(title="distribution of duration of trajectories") 
+                     p <- hist(duration()) +labs(title="Distribution of duration of trajectories") 
                      
                    }
                    else if (input$choixGraphiqueStats == "timeState") {
-                     p <- boxplot(time_spent()) + labs(title="distribution of time spent by state") +scale_fill_manual(values=eval(parse(text=colorOfState())))
+                     p <- boxplot(time_spent()) + labs(title="Distribution of time spent by state") +scale_fill_manual(values=eval(parse(text=colorOfState())))
                    }
                  })
     p
@@ -436,7 +445,7 @@ shinyServer(function(input, output, session) {
     p <-
       ggplot(data, aes_string(x = "state", y = "timeSpent", fill = "state")) +
       geom_boxplot() +
-      labs(x = "State", y = "Time Spent", fill = "State",title=paste("time spent in each state by",input$groupVariableStatistics)) + facet_wrap(input$groupVariableStatistics)+scale_fill_manual(values=eval(parse(text=colorOfState())))
+      labs(x = "State", y = "Time Spent", fill = "State",title=paste("Time spent in each state by",input$groupVariableStatistics)) + facet_wrap(input$groupVariableStatistics)+scale_fill_manual(values=eval(parse(text=colorOfState())))
     p
   })
   
@@ -465,7 +474,7 @@ shinyServer(function(input, output, session) {
       unique(merge(d, data_used()[, c("id", input$groupVariableStatistics)], by =
                      "id"))
     g <-
-      ggplot(data.frame(dure_gp), aes_string(x = "duration")) + labs(x = "Duration", y = "Frequency",title=paste("duration of trajectories by",input$groupVariableStatistics)) +
+      ggplot(data.frame(dure_gp), aes_string(x = "duration")) + labs(x = "Duration", y = "Frequency",title=paste("Duration of trajectories by",input$groupVariableStatistics)) +
       geom_histogram(fill = "lightblue",
                      color = "black",
                      bins = floor(1 + log2(length(duration(
@@ -497,7 +506,7 @@ shinyServer(function(input, output, session) {
       unique(merge(d, data_used()[, c("id", input$groupVariableStatistics)], by =
                      "id"))
     g <-
-      ggplot(data.frame(jump_gp), aes_string(x = "jump")) + labs(x = "Number of jump", y = "Frequency",title=paste("number of jumps by",input$groupVariableStatistics)) +
+      ggplot(data.frame(jump_gp), aes_string(x = "jump")) + labs(x = "Number of jump", y = "Frequency",title=paste("Number of jumps by",input$groupVariableStatistics)) +
       geom_bar(fill = "lightblue", color = "black") + facet_wrap(input$groupVariableStatistics)
     g
   })
@@ -509,13 +518,13 @@ shinyServer(function(input, output, session) {
       duration <- duration()
       q <- quantile(duration, seq(0, 1, 0.25))
       d <- data.frame(
-        mean = round(mean(duration), 2),
-        median = round(q[3], 2),
+        Mean = round(mean(duration), 2),
+        Median = round(q[3], 2),
         Q1 = round(q[2], 2),
         Q3 = round(q[4], 2),
-        min = round(q[1], 2),
-        max = round(q[5], 2),
-        sd = round(sd(duration), 2)
+        Min = round(q[1], 2),
+        Max = round(q[5], 2),
+        Sd = round(sd(duration), 2)
       )
       row.names(d) <- c("All")
       
@@ -524,13 +533,13 @@ shinyServer(function(input, output, session) {
       nJump <- compute_number_jumps(data_used()[, c("id", "time", "state")])
       q <- quantile(nJump, seq(0, 1, 0.25))
       d <- data.frame(
-        mean = round(mean(nJump), 2),
-        median = round(q[3], 2),
+        Mean = round(mean(nJump), 2),
+        Median = round(q[3], 2),
         Q1 = round(q[2], 2),
         Q3 = round(q[4], 2),
-        min = round(q[1], 2),
-        max = round(q[5], 2),
-        sd = round(sd(nJump), 2)
+        Min = round(q[1], 2),
+        Max = round(q[5], 2),
+        Sd = round(sd(nJump), 2)
       )
       row.names(d) <- c("All")
       d
@@ -564,8 +573,7 @@ shinyServer(function(input, output, session) {
     ))
     if (input$choixGraphiqueStats == 'duration') {
       d <- as.data.frame(matrix(ncol = 9, nrow = 0))
-      colnames(d) <-
-        c("mean", "median", "Q1", "Q3", "min", "max", "sd", "nbInd")
+      colnames(d) <- c("Mean", "Median", "Q1", "Q3", "Min", "Max", "Sd", "Number")
       for (i in mod) {
         data <- data_used()[data_used()[, input$groupVariableStatistics] == i, ]
         duration <- compute_duration(data[, c("id", "time", "state")])
@@ -574,14 +582,14 @@ shinyServer(function(input, output, session) {
           rbind.data.frame(
             d,
             data.frame(
-              mean = round(mean(duration), 2),
-              median = round(q[3], 2),
+              Mean = round(mean(duration), 2),
+              Median = round(q[3], 2),
               Q1 = round(q[2], 2),
               Q3 = round(q[4], 2),
-              min = round(q[1], 2),
-              max = round(q[5], 2),
-              sd = round(sd(duration), 2),
-              nbInd = length(duration)
+              Min = round(q[1], 2),
+              Max = round(q[5], 2),
+              Sd = round(sd(duration), 2),
+              Number = length(duration)
             )
           )
       }
@@ -590,14 +598,14 @@ shinyServer(function(input, output, session) {
         rbind.data.frame(
           d,
           data.frame(
-            mean = round(mean(duration()), 2),
-            median = round(q[3], 2),
+            Mean = round(mean(duration()), 2),
+            Median = round(q[3], 2),
             Q1 = round(q[2], 2),
             Q3 = round(q[4], 2),
-            min = round(q[1], 2),
-            max = round(q[5], 2),
-            sd = round(sd(duration()), 2),
-            nbInd = length(duration())
+            Min = round(q[1], 2),
+            Max = round(q[5], 2),
+            Sd = round(sd(duration()), 2),
+            Number = length(duration())
           )
         )
       row.names(d) <- c(mod,"All")
@@ -605,7 +613,7 @@ shinyServer(function(input, output, session) {
     } else if (input$choixGraphiqueStats == 'jump') {
       d <- as.data.frame(matrix(ncol = 9, nrow = 0))
       colnames(d) <-
-        c("mean", "median", "Q1", "Q3", "min", "max", "sd", "nbInd")
+        c("Mean", "Median", "Q1", "Q3", "Min", "Max", "Sd", "Number")
       for (i in mod) {
         data <- data_used()[data_used()[, input$groupVariableStatistics] == i, ]
         jump <- compute_number_jumps(data[, c("id", "time", "state")])
@@ -613,14 +621,14 @@ shinyServer(function(input, output, session) {
         d <- rbind.data.frame(
           d,
           data.frame(
-            mean = round(mean(jump), 2),
-            median = round(q[3], 2),
+            Mean = round(mean(jump), 2),
+            Median = round(q[3], 2),
             Q1 = round(q[2], 2),
             Q3 = round(q[4], 2),
-            min = round(q[1], 2),
-            max = round(q[5], 2),
-            sd = round(sd(jump), 2),
-            nbInd = length(jump)
+            Min = round(q[1], 2),
+            Max = round(q[5], 2),
+            Sd = round(sd(jump), 2),
+            Number = length(jump)
           )
         )
       }
@@ -628,14 +636,14 @@ shinyServer(function(input, output, session) {
       d <- rbind.data.frame(
         d,
         data.frame(
-          mean = round(mean(nJump()), 2),
-          median = round(q[3], 2),
+          Mean = round(mean(nJump()), 2),
+          Median = round(q[3], 2),
           Q1 = round(q[2], 2),
           Q3 = round(q[4], 2),
-          min = round(q[1], 2),
-          max = round(q[5], 2),
-          sd = round(sd(nJump()), 2),
-          nbInd = length(nJump())
+          Min = round(q[1], 2),
+          Max = round(q[5], 2),
+          Sd = round(sd(nJump()), 2),
+          Number = length(nJump())
         )
       )
       row.names(d) <- c(mod,"All")
@@ -656,7 +664,7 @@ shinyServer(function(input, output, session) {
     prop <- paste(round(prop.table(t), 4) * 100, "%")
     d <- rbind.data.frame(as.vector(t), prop)
     colnames(d) <- name
-    row.names(d) <- c("Frequencies", "proportions")
+    row.names(d) <- c("Frequencies", "Proportions")
     d
   }, extensions = c('FixedColumns', 'Buttons'), server = FALSE, options = list(
     dom = 'Btipr',
@@ -695,14 +703,14 @@ shinyServer(function(input, output, session) {
         d <- rbind.data.frame(
           d,
           data.frame(
-            mean = round(mean(time), 2),
-            median = round(q[3], 2),
+            Mean = round(mean(time), 2),
+            Median = round(q[3], 2),
             Q1 = round(q[2], 2),
             Q3 = round(q[4], 2),
-            min = round(q[1], 2),
-            max = round(q[5], 2),
-            sd = round(sd(time), 2),
-            nbInd = length(time)
+            Min = round(q[1], 2),
+            Max = round(q[5], 2),
+            Sd = round(sd(time), 2),
+            Number = length(time)
           )
         )
       }
@@ -711,14 +719,14 @@ shinyServer(function(input, output, session) {
       d <- rbind.data.frame(
         d,
         data.frame(
-          mean = round(mean(time), 2),
-          median = round(q[3], 2),
+          Mean = round(mean(time), 2),
+          Median = round(q[3], 2),
           Q1 = round(q[2], 2),
           Q3 = round(q[4], 2),
-          min = round(q[1], 2),
-          max = round(q[5], 2),
-          sd = round(sd(time), 2),
-          nbInd = length(time)
+          Min = round(q[1], 2),
+          Max = round(q[5], 2),
+          Sd = round(sd(time), 2),
+          Number = length(time)
         )
       )
       row.names(d) <- c(gp, "All")
@@ -773,7 +781,7 @@ shinyServer(function(input, output, session) {
   
   output$timeSpentAllTable <- DT::renderDataTable({
     d <- as.data.frame(matrix(ncol = 8, nrow = 0))
-    colnames(d) <- c("mean", "median", "Q1", "Q3", "min", "max", "sd")
+    colnames(d) <- c("Mean", "Median", "Q1", "Q3", "Min", "Max", "Sd")
     timeSpent <- time_spent()
     mod = colnames(timeSpent)
     for (i in mod) {
@@ -782,13 +790,13 @@ shinyServer(function(input, output, session) {
       d <- rbind.data.frame(
         d,
         data.frame(
-          mean = round(mean(time), 2),
-          median = round(q[3], 2),
+          Mean = round(mean(time), 2),
+          Median = round(q[3], 2),
           Q1 = round(q[2], 2),
           Q3 = round(q[4], 2),
-          min = round(q[1], 2),
-          max = round(q[5], 2),
-          sd = round(sd(time), 2)
+          Min = round(q[1], 2),
+          Max = round(q[5], 2),
+          Sd = round(sd(time), 2)
         )
       )
     }
@@ -897,7 +905,7 @@ shinyServer(function(input, output, session) {
           "input.choixGraphiqueStats=='summary'",
           box(
             width = 12,
-            title = "summary of data set",status = "danger", solidHeader = TRUE,
+            title = "Summary of data set",status = "danger", solidHeader = TRUE,
             verbatimTextOutput("summary")
           )
           
@@ -908,7 +916,7 @@ shinyServer(function(input, output, session) {
                  tags$div(
                    box(
                      width = 12,
-                     title = "summary of number of jumps",status = "danger", solidHeader = TRUE,
+                     title = "Summary of number of jumps",status = "danger", solidHeader = TRUE,
                      DTOutput("summaryStatsAll")
                      
                      
@@ -917,7 +925,7 @@ shinyServer(function(input, output, session) {
                      "input.choixGraphiqueStats=='jump'",
                      box(
                        width = 12,
-                       title = "table of number of jumps",status = "danger", solidHeader = TRUE,
+                       title = "Frequencies and proportions",status = "danger", solidHeader = TRUE,
                        DTOutput("nJumpTable")
                      )
                    )
@@ -928,7 +936,7 @@ shinyServer(function(input, output, session) {
           column(4,
                  box(
                    width = 12,status = "danger", solidHeader = TRUE,
-                   title = "summary of time spent by state",
+                   title = "Summary of time spent by state",
                    DTOutput("timeSpentAllTable")
                  ))
         ),
@@ -950,7 +958,7 @@ shinyServer(function(input, output, session) {
           "input.choixGraphiqueStats=='summary'",
           box(
             width = 12,
-            title = "summary of data set by group",status = "danger", solidHeader = TRUE,
+            title = "Summary of data set by group",status = "danger", solidHeader = TRUE,
             uiOutput("summaryGp")
           )
           
@@ -961,26 +969,26 @@ shinyServer(function(input, output, session) {
                  tags$div(
                    box(
                      width = 12,
-                     title = "summary",status = "danger", solidHeader = TRUE,
+                     title = "Summary of statistic by group",status = "danger", solidHeader = TRUE,
                      DTOutput("summaryStatsByGroup")
                    ),
                    conditionalPanel(
                      "input.choixGraphiqueStats=='jump'",
                      box(
                        width = 12,
-                       title = "table of number of jumps by group",status = "danger", solidHeader = TRUE,
+                       title = "Frequencies by group variable",status = "danger", solidHeader = TRUE,
                        DTOutput("nJumpTableGroupFreq")
                      ),
                      box(
                        width = 12,
-                       title = "proportion of number of jumps by group",status = "danger", solidHeader = TRUE,
+                       title = "Proportions by group variable",status = "danger", solidHeader = TRUE,
                        selectizeInput(
                          "tableChoiceGroupDesc",
-                         "choose a table",
+                         "Choose a table",
                          choices = c(
-                           "proportions" = "prop",
-                           "row profiles" = "row",
-                           "column profiles" = "column"
+                           "Proportions" = "prop",
+                           "Row profiles" = "row",
+                           "Column profiles" = "column"
                          ),
                          selected = "prop"
                        ),
@@ -1032,7 +1040,7 @@ shinyServer(function(input, output, session) {
   #######################
   output$groupVarMarkov <- renderUI({
     selectizeInput("groupVariableMarkov",
-                   "select a group variable",
+                   "Select a group variable",
                    choice = c(listGroupVar()))
   })
   
@@ -1085,7 +1093,10 @@ shinyServer(function(input, output, session) {
                        proba <- estimate_pt(data[, c("id", "state", "time")])
                        output[[paste("graphTransition", par, sep = "_")]] <-
                          renderPlot({
-                           plot(mark)
+                           r<-eval(parse(text=colorOfState())) 
+                           r<-r[names(r) %in% colnames(mark$P)]
+                           plot(mark,box.col = r)
+
                          })
                        output[[paste("matTransition", par, sep = "_")]] <-
                          renderPrint({
@@ -1141,7 +1152,9 @@ shinyServer(function(input, output, session) {
   
   ## Transition graph all
   output$transGraphAll <- renderPlot({
-    plot(estimateMarkovAll())
+    r<-eval(parse(text=colorOfState())) 
+    r<-r[names(r) %in% colnames(estimateMarkovAll()$P)]
+    plot(estimateMarkovAll(),box.col=r)
   }, height = 900)
   
   
@@ -1263,7 +1276,7 @@ shinyServer(function(input, output, session) {
              )) +
       geom_line() +
       ylim(0, 1) +
-      labs(x = "Time", y = "p(t)", title = "P(X(t) = x)") + facet_wrap("groupe")
+      labs(x = "Time", y = "p(t)", title = "P(X(t) = x)") + facet_wrap("groupe")+scale_colour_manual(values=eval(parse(text=colorOfState())))
     p
   })
   
@@ -1299,9 +1312,9 @@ shinyServer(function(input, output, session) {
     round(estimateMarkovAll()$lambda,3)
   })
   
-  
-  ##5. Factorial analysis
-  #######################
+  ########################
+  ##5. Factorial analysis#
+  ########################
   
   
   
@@ -1311,13 +1324,13 @@ shinyServer(function(input, output, session) {
   
   output$titleBoxFactorial<-renderUI({
     
-    h4(paste0("path observed on [",min(data_used()$time),";T]"))
+    h4(paste0("Path observed on [",min(data_used()$time),";T]"))
   })
   output$uiAbsorbedState<-renderUI({
     state<-unique(data_used()[,"state"])
     multiInput(
       inputId = "absorbedState",
-      label = "prolong state:", 
+      label = "State(s) to be extended", 
       choices = NULL,
       choiceNames = state,
       choiceValues = state
@@ -1325,15 +1338,19 @@ shinyServer(function(input, output, session) {
   })
   
   outputOptions(output, 'fmcaUploaded', suspendWhenHidden = FALSE)
+  
   color_data_CFDA<-reactive({
-    stateCFDA<-unique(data_CFDA()$state)
-    stateOrigin<-unique(data_import()$state)
+    stateCFDA<-sort(unique(data_CFDA()$state))
+    stateOrigin<-sort(unique(data_used()$state))
     if(length(stateCFDA)>length(stateOrigin)){
       nonObState<-stateCFDA[!(stateCFDA%in% stateOrigin)]
       color<-substr(colorOfState(),3,nchar(colorOfState())-1) 
       paste0("c(",color,",",'"',nonObState,'"',"=",'"',"#565656",'")')
+      r<-eval(parse(text=paste0("c(",color,",",'"',nonObState,'"',"=",'"',"#565656",'")')))
+      r[ order(names(r))]
     }else{
       colorOfState()
+      r<-eval(parse(text=colorOfState()))
     }
   })
   data_CFDA <- reactive({
@@ -1346,11 +1363,11 @@ shinyServer(function(input, output, session) {
       validate(
         need(
           resume$uniqueStart,
-          "all individuals must have the same time start value"
+          "All individuals must have the same time start value"
         ),
         need(
           tmax >= minT,
-          paste('end time must be greater than', minT)
+          paste('End time must be greater than', minT)
         )
       )
       d <- cut_data(data_used()[, c("id", "time", "state")], Tmax=tmax, prolongLastState = input$absorbedState,NAstate=input$nameNAstate)
@@ -1359,7 +1376,7 @@ shinyServer(function(input, output, session) {
   })
   
   output$plotDataCFDA<-renderPlot({
-    plotData(data_CFDA(),addId = FALSE,addBorder = FALSE,col=eval(parse(text=color_data_CFDA()))
+    plotData(data_CFDA(),addId = FALSE,addBorder = FALSE,col=color_data_CFDA()
              )
   })
   output$summaryCFDA <- renderPrint({
@@ -1373,7 +1390,7 @@ shinyServer(function(input, output, session) {
       validate(
         need(
           is.numeric(data_used()[, "time"]),
-          'time must be numeric, please choose correct decimal symbol'
+          'Time must be numeric, please choose correct decimal separator'
         ),
         need(!is.na(as.double(input$tpsmax)) , 'end time T invalid '),
       )
@@ -1423,16 +1440,16 @@ shinyServer(function(input, output, session) {
     vpselection <- which(round(fmca()$eigenvalues, 4) > 0)
     vp <- cbind.data.frame(
       eigenvalues = round(fmca()$eigenvalues[vpselection], 4),
-      "percentage of variance" = round(fmca()$eigenvalues[vpselection] /
+      "Percentage of variance" = round(fmca()$eigenvalues[vpselection] /
                                          sum(fmca()$eigenvalues[vpselection]) * 100, 2),
-      "cumulative percentage of variance" = round(
+      "Cumulative percentage of variance" = round(
         cumsum(fmca()$eigenvalues[vpselection]) / sum(fmca()$eigenvalues[vpselection]) *
           100,
         2
       )
     )
     rownames(vp) <-
-      paste("dim", 1:length(fmca()$eigenvalues[vpselection]))
+      paste("Dim", 1:length(fmca()$eigenvalues[vpselection]))
     vp
   })
   
@@ -1457,20 +1474,20 @@ shinyServer(function(input, output, session) {
     if (input$cumulative) {
       g <-
         ggplot(cbind.data.frame(x = 1:nrow(eigenvalues()), y = eigenvalues()[, 3])) +
-        ggtitle("cumulative eigenvalues plot") +
+        ggtitle("Cumulative eigenvalues plot") +
         theme(plot.title = element_text(hjust = 0.5)) + scale_x_continuous(breaks =
                                                                              1:nrow(eigenvalues())) +
         geom_col(fill = "blue") + aes(x = x, y = y) +
-        xlab("component") + ylab("Percentage of variance")
+        xlab("Component") + ylab("Percentage of variance")
       
     } else{
       g <-
         ggplot(cbind.data.frame(x = 1:nrow(eigenvalues()), y = eigenvalues()[, 2])) +
-        ggtitle("eigenvalues plot") +
+        ggtitle("Eigenvalues plot") +
         theme(plot.title = element_text(hjust = 0.5)) + scale_x_continuous(breaks =
                                                                              1:nrow(eigenvalues())) +
         geom_col(fill = "blue") + aes(x = x, y = y) +
-        xlab("component") + ylab("Percentage of variance")
+        xlab("Component") + ylab("Percentage of variance")
     }
     g
   })
@@ -1480,7 +1497,7 @@ shinyServer(function(input, output, session) {
     maxi <-isolate(input$nbasis * length(summary_cfd(data_CFDA()[, c("id", "state", "time")])$states))
     selectInput(
       inputId = "choix_dim1",
-      label = "axis 1",
+      label = "Axis 1",
       selected = 1,
       choices = seq(1, maxi, 1),
       multiple = FALSE
@@ -1493,7 +1510,7 @@ shinyServer(function(input, output, session) {
       isolate(input$nbasis * length(summary_cfd(data_CFDA()[, c("id", "state", "time")])$states))
     selectInput(
       inputId = "choix_dim2",
-      label = "axis 2 ",
+      label = "Axis 2 ",
       selected = 2,
       choices = seq(1, maxi, 1),
       multiple = FALSE
@@ -1537,16 +1554,23 @@ shinyServer(function(input, output, session) {
   output$groupVarFactorialPlan <- renderUI({
     selectizeInput(
       "groupVariableFactorialPlan",
-      "select a group variable",
+      "Select a group variable",
       choice = c("NONE", listGroupVar())
     )
   })
   
   optimalEncodingPlot1 <- reactive({
     req(input$choix_dim1)
-    plot(fmca(),
-         harm = as.numeric(input$choix_dim1),
-         addCI = input$addCI)+ylab("a_x(t)")+scale_color_manual(values=eval(parse(text=color_data_CFDA())))
+    if(input$addCI){
+      plot(fmca(),
+           harm = as.numeric(input$choix_dim1),
+           addCI = TRUE)+ylab("a_x(t)")+scale_fill_manual(values=color_data_CFDA())
+    }else{
+      plot(fmca(),
+           harm = as.numeric(input$choix_dim1),
+           addCI = FALSE)+ylab("a_x(t)")+scale_color_manual(values=color_data_CFDA())
+    }
+    
   })
   
   output$optimalEncoding1 <- renderPlotly({
@@ -1555,9 +1579,15 @@ shinyServer(function(input, output, session) {
   
   optimalEncodingPlot2 <- reactive({
     req(input$choix_dim2)
-    plot(fmca(),
-         harm = as.numeric(input$choix_dim2),
-         addCI = input$addCI)+ylab("a_x(t)")+scale_color_manual(values=eval(parse(text=color_data_CFDA())))
+    if(input$addCI){
+      plot(fmca(),
+           harm = as.numeric(input$choix_dim1),
+           addCI = TRUE)+ylab("a_x(t)")+scale_fill_manual(values=color_data_CFDA())
+    }else{
+      plot(fmca(),
+           harm = as.numeric(input$choix_dim2),
+           addCI = FALSE)+ylab("a_x(t)")+scale_color_manual(values=color_data_CFDA())
+    }
   })
   
   output$optimalEncoding2 <- renderPlotly({
@@ -1574,7 +1604,7 @@ shinyServer(function(input, output, session) {
       isolate(input$nbasis * length(summary_cfd(data_CFDA()[, c("id", "state", "time")])$states))
     selectInput(
       inputId = "choix_dim1Extrem",
-      label = "axis 1",
+      label = "Axis 1",
       selected = 1,
       choices = seq(1, maxi, 1),
       multiple = FALSE
@@ -1587,7 +1617,7 @@ shinyServer(function(input, output, session) {
       isolate(input$nbasis * length(summary_cfd(data_CFDA()[, c("id", "state", "time")])$states))
     selectInput(
       inputId = "choix_dim2Extrem",
-      label = "axis 2 ",
+      label = "Axis 2 ",
       selected = 2,
       choices = seq(1, maxi, 1),
       multiple = FALSE
@@ -1597,7 +1627,7 @@ shinyServer(function(input, output, session) {
   output$extremComp1ui <- renderUI({
     sliderInput(
       "extremComp1",
-      paste("extreme individuals on dimension", input$choix_dim1Extrem),
+      paste("Extreme individuals on dimension", input$choix_dim1Extrem),
       min = 0,
       max = 100,
       value = 10
@@ -1607,7 +1637,7 @@ shinyServer(function(input, output, session) {
   output$extremComp2ui <- renderUI({
     sliderInput(
       "extremComp2",
-      paste("extreme individuals on dimension", input$choix_dim2Extrem),
+      paste("Extreme individuals on dimension", input$choix_dim2Extrem),
       min = 0,
       max = 100,
       value = 10
@@ -1616,12 +1646,12 @@ shinyServer(function(input, output, session) {
   
   output$axe1 <- renderUI({
     req(input$choix_dim1Extrem)
-    h4(paste("dimension", input$choix_dim1Extrem))
+    h4(paste("Dimension", input$choix_dim1Extrem))
   })
   
   output$axe2 <- renderUI({
     req(input$choix_dim2Extrem)
-    h4(paste("dimension", input$choix_dim2Extrem))
+    h4(paste("Dimension", input$choix_dim2Extrem))
   })
   
   extremIndividuals <- reactive({
@@ -1663,22 +1693,22 @@ shinyServer(function(input, output, session) {
     ids <- unique(data_CFDA()$id)
     group <-
       factor(
-        rep("not extrem", length(ids)),
+        rep("Not extrem", length(ids)),
         levels = c(
-          "extrem on axis 2",
-          "extrem on axis 1",
-          "not extrem",
-          "extrem on both axis"
+          "Extrem on axis 2",
+          "Extrem on axis 1",
+          "Not extrem",
+          "Extrem on both axis"
         )
       )
-    group[ids %in% extremIndividuals()$minpc1] = "extrem on axis 1"
-    group[ids %in% extremIndividuals()$maxpc1] = "extrem on axis 1"
-    group[ids %in% extremIndividuals()$minpc2] = "extrem on axis 2"
-    group[ids %in% extremIndividuals()$maxpc2] = "extrem on axis 2"
+    group[ids %in% extremIndividuals()$minpc1] = "Extrem on axis 1"
+    group[ids %in% extremIndividuals()$maxpc1] = "Extrem on axis 1"
+    group[ids %in% extremIndividuals()$minpc2] = "Extrem on axis 2"
+    group[ids %in% extremIndividuals()$maxpc2] = "Extrem on axis 2"
     group[ids %in% intersect(extremIndividuals()$minpc1, extremIndividuals()$minpc2)] =
-      "extrem on both axis"
+      "Extrem on both axis"
     group[ids %in% intersect(extremIndividuals()$maxpc1, extremIndividuals()$maxpc2)] =
-      "extrem on both axis"
+      "Extrem on both axis"
     p <-
       plotComponent(fmca(),
                     comp = c(
@@ -1692,19 +1722,19 @@ shinyServer(function(input, output, session) {
   })
   
   plotDataExtremAxe1 <- reactive({
-    validate(need(input$extremComp1 > 0, "no extrem individuals selected"))
+    validate(need(input$extremComp1 > 0, "No extrem individuals selected"))
     ids <- unique(data_CFDA()$id)
     group <-
       factor(rep(NA, length(ids)),
-             levels = c("lowest component values", "highest component values"))
-    group[ids %in% extremIndividuals()$minpc1] = "lowest component values"
-    group[ids %in% extremIndividuals()$maxpc1] = "highest component values"
+             levels = c("Lowest component values", "Highest component values"))
+    group[ids %in% extremIndividuals()$minpc1] = "Lowest component values"
+    group[ids %in% extremIndividuals()$maxpc1] = "Highest component values"
     plotData(
       data_CFDA(),
       group = group,
       addBorder = F,
       addId = F,
-      col=eval(parse(text=color_data_CFDA()) )
+      col=color_data_CFDA()
     ) + labs(title = paste("Extreme individuals on component", input$choix_dim1))
     
   })
@@ -1719,15 +1749,15 @@ shinyServer(function(input, output, session) {
     ids <- unique(data_CFDA()$id)
     group <-
       factor(rep(NA, length(ids)),
-             levels = c("lowest component values", "highest component values"))
-    group[ids %in% extremIndividuals()$minpc2] = "lowest component values"
-    group[ids %in% extremIndividuals()$maxpc2] = "highest component values"
+             levels = c("Lowest component values", "Highest component values"))
+    group[ids %in% extremIndividuals()$minpc2] = "Lowest component values"
+    group[ids %in% extremIndividuals()$maxpc2] = "Highest component values"
     plotData(
       data_CFDA(),
       group = group,
       addBorder = F,
       addId = F,
-      col=eval(parse(text=color_data_CFDA()))
+      col=color_data_CFDA()
     ) + labs(title = paste("Extreme individuals on component", input$choix_dim2))
   })
   
@@ -1774,6 +1804,25 @@ shinyServer(function(input, output, session) {
   ##4.Clustering #
   ################
   
+  ##stat by cluster
+  time_spent_data_CFDA <- reactive({
+    compute_time_spent(data_CFDA())
+  })
+  
+  nJump_data_CFDA <- reactive({
+    compute_number_jumps(data_CFDA())
+  })
+  
+  output$nJumpGraphByCluster <- renderPlotly({
+    jump_gp <-
+      cbind.data.frame(jump = as.factor(as.vector(nJump_data_CFDA())), cluster =
+                         class())
+    g <-
+      ggplot(data.frame(jump_gp), aes(x = jump)) + labs(x = "Number of jump", y = "Frequency") +
+      geom_bar(fill = "lightblue", color = "black") + facet_wrap("cluster")
+    g
+  })
+  
   output$effecCluster<-renderPrint({
     req(input$nbclust)
     d<-as.data.frame(table(class()))
@@ -1789,18 +1838,19 @@ shinyServer(function(input, output, session) {
       isolate(input$nbasis * length(summary_cfd(data_CFDA()[, c("id", "state", "time")])$states))
     selectInput(
       inputId = "nbcomp",
-      label = "number of component for clustering",
+      label = "Number of components for clustering",
       selected = 1,
       choices = seq(1, maxi, 1),
       multiple = FALSE
     )
   })
   
+  
   hc <- reactive({
     input$clusteringSubmit
     isolate({
       if (input$compsCAH == 1) {
-        ncomp <- input$nbcomp
+        ncomp <- as.numeric(input$nbcomp)
         hclust(dist(fmca()$pc[, 1:ncomp]), method = input$method)
       } else{
         if (input$percentageVariance == 100) {
@@ -1831,281 +1881,281 @@ shinyServer(function(input, output, session) {
     dendogramme()
   })
   
-  max_cluster<-reactive({
-    max=length(unique(data_CFDA()[,"id"]))-1
-  })
-  output$clus <- renderUI({
-    numericInput(
-      "nbclust",
-      "Nombre de groupe",
-      min = 2,
-      max = max_cluster(),
-      value = 2
-    )
-  })
-  
-  class <- reactive({
-    req(input$nbclust)
-    validate(
-      need(input$nbclust<=max_cluster() &input$nbclust>=2,paste("the number of clusters must be between",2,"and",max_cluster()))
-    )
-    class <- cutree(hc(), k = input$nbclust)
-  })
-  groupe <- reactive({
-    plotData(
-      data_CFDA(),
-      group = class(),
-      addId = FALSE,
-      addBorder = FALSE,
-      col=eval(parse(text=color_data_CFDA())),
-      sort = TRUE
-    )
-  })
-  
-  output$groupe <- renderPlot({
-    groupe()
-  })
-  
-  output$downloadDendogram = downloadHandler(
-    filename =  function() {
-      paste("dendogram", "png", sep = ".")
-    },
-    content = function(file) {
-      ggsave(file, dendogramme() , device = "png")
-    }
+max_cluster<-reactive({
+  max=length(unique(data_CFDA()[,"id"]))-1
+})
+output$clus <- renderUI({
+  numericInput(
+    "nbclust",
+    "Number of clusters",
+    min = 2,
+    max = max_cluster(),
+    value = 2
   )
-  
-  output$downloadGroupPlot = downloadHandler(
-    filename =  function() {
-      paste("groupPlot", "png", sep = ".")
-    },
-    content = function(file) {
-      ggsave(file, groupe(), device = "png")
-    }
+})
+
+class <- reactive({
+  req(input$nbclust)
+  validate(
+    need(input$nbclust<=max_cluster() &input$nbclust>=2,paste("the number of clusters must be between",2,"and",max_cluster()))
   )
+  class <- cutree(hc(), k = input$nbclust)
+})
+groupe <- reactive({
+  plotData(
+    data_CFDA(),
+    group = class(),
+    addId = FALSE,
+    addBorder = FALSE,
+    col=color_data_CFDA(),
+    sort = TRUE
+  )
+})
+
+output$groupe <- renderPlot({
+  groupe()
+})
+
+
+output$downloadDendogram = downloadHandler(
+  filename =  function() {
+    paste("dendogram", "png", sep = ".")
+  },
+  content = function(file) {
+    ggsave(file, dendogramme() , device = "png")
+  }
+)
+
+output$downloadGroupPlot = downloadHandler(
+  filename =  function() {
+    paste("groupPlot", "png", sep = ".")
+  },
+  content = function(file) {
+    ggsave(file, groupe(), device = "png")
+  }
+)
+
+output$timeStateGraphByCluster <- renderPlotly({
+  x <- time_spent_data_CFDA()
+  df <-
+    data.frame(
+      timeSpent = as.vector(x),
+      state = factor(rep(colnames(x), each = nrow(x)), levels = colnames(x)),
+      id = as.vector(rownames(x))
+    )
+  d <- cbind.data.frame(id = names(class()), cluster = class())
+  data <- unique(merge(df, d, by = "id"))
+  p <-
+    ggplot(data, aes_string(x = "state", y = "timeSpent", fill = "state")) +
+    geom_boxplot() +
+    labs(x = "State", y = "Time Spent", fill = "State") + facet_wrap("cluster")+scale_fill_manual(values=color_data_CFDA())
+  p
   
-  ##stat by cluster
-  time_spent_data_CFDA <- reactive({
-    compute_time_spent(data_CFDA())
-  })
-  
-  nJump_data_CFDA <- reactive({
-    compute_number_jumps(data_CFDA())
-  })
-  
-  output$nJumpGraphByCluster <- renderPlotly({
-    jump_gp <-
-      cbind.data.frame(jump = as.factor(as.vector(nJump_data_CFDA())), cluster =
-                         class())
-    g <-
-      ggplot(data.frame(jump_gp), aes(x = jump)) + labs(x = "Number of jump", y = "Frequency") +
-      geom_bar(fill = "lightblue", color = "black") + facet_wrap("cluster")
-    g
-  })
-  
-  output$timeStateGraphByCluster <- renderPlotly({
-    x <- time_spent_data_CFDA()
-    df <-
+})
+
+
+
+output$SummaryJumpByCluster <- DT::renderDataTable({
+  d <- as.data.frame(matrix(ncol = 8, nrow = 0))
+  colnames(d) <-c("Mean", "Median", "Q1", "Q3", "Min", "Max", "Sd", "Number")
+  for (i in c(1:input$nbclust)) {
+    idToKeep <- names(class()[class() == i])
+    data <- data_CFDA()[data_CFDA()$id %in% idToKeep, ]
+    jump <- compute_number_jumps(data[, c("id", "time", "state")])
+    q <- quantile(jump, seq(0, 1, 0.25))
+    d <- rbind.data.frame(
+      d,
       data.frame(
-        timeSpent = as.vector(x),
-        state = factor(rep(colnames(x), each = nrow(x)), levels = colnames(x)),
-        id = as.vector(rownames(x))
+        Mean = round(mean(jump), 2),
+        Median = round(q[3], 2),
+        Q1 = round(q[2], 2),
+        Q3 = round(q[4], 2),
+        Min = round(q[1], 2),
+        Max = round(q[5], 2),
+        Sd = round(sd(jump), 2),
+        Number = length(jump)
       )
-    d <- cbind.data.frame(id = names(class()), cluster = class())
-    data <- unique(merge(df, d, by = "id"))
-    p <-
-      ggplot(data, aes_string(x = "state", y = "timeSpent", fill = "state")) +
-      geom_boxplot() +
-      labs(x = "State", y = "Time Spent", fill = "State") + facet_wrap("cluster")+scale_fill_manual(values=eval(parse(text=color_data_CFDA())))
-    p
-    
-  })
+    )
+  }
+  jump <- compute_number_jumps(data_CFDA()[, c("id", "time", "state")])
+  q <- quantile(jump, seq(0, 1, 0.25))
+  d <- rbind.data.frame(
+    d,
+    data.frame(
+      Mean = round(mean(jump), 2),
+      Median = round(q[3], 2),
+      Q1 = round(q[2], 2),
+      Q3 = round(q[4], 2),
+      Min = round(q[1], 2),
+      Max = round(q[5], 2),
+      Sd = round(sd(jump), 2),
+      Number = length(jump)
+    )
+  )
+  row.names(d) <- c(paste("cluster",1:input$nbclust),"All")
+  d
+}, extensions = c('FixedColumns', 'Buttons'), server = FALSE, options = list(
+  dom = 'Btipr',
+  scrollX = TRUE,
+  fixedColumns = list(leftColumns = 1),
+  buttons = c('copy', 'csv', 'excel', 'pdf')
+))
+
+output$freqJumpByCluster <- DT::renderDataTable({
+  jump <-data.frame(id = names(nJump_data_CFDA()),
+                    jump = as.vector(nJump_data_CFDA()))
+  group <-cbind.data.frame(id = names(class()), group = as.vector(class()))
+  jumpMerge <- merge(jump, group, by = "id")
+  t <- table(jumpMerge$group, jumpMerge$jump)
+  t <- as.data.frame.matrix(t)
+  row_som <- apply(t, 1, sum)
+  col_som <- apply(t, 2, sum)
+  res <-rbind.data.frame(cbind.data.frame(t, total = row_som), total = c(col_som, sum(col_som)))
+  row.names(res) <- c(paste("cluster",1:input$nbclust),"total")
+  res
   
-  
-  
-  output$SummaryJumpByCluster <- DT::renderDataTable({
-    d <- as.data.frame(matrix(ncol = 8, nrow = 0))
-    colnames(d) <-
-      c("mean", "median", "Q1", "Q3", "min", "max", "sd", "nbInd")
-    for (i in c(1:input$nbclust)) {
-      idToKeep <- names(class()[class() == i])
-      data <- data_CFDA()[data_CFDA()$id %in% idToKeep, ]
-      jump <- compute_number_jumps(data[, c("id", "time", "state")])
-      q <- quantile(jump, seq(0, 1, 0.25))
-      d <- rbind.data.frame(
-        d,
-        data.frame(
-          mean = round(mean(jump), 2),
-          median = round(q[3], 2),
-          Q1 = round(q[2], 2),
-          Q3 = round(q[4], 2),
-          min = round(q[1], 2),
-          max = round(q[5], 2),
-          sd = round(sd(jump), 2),
-          nbInd = length(jump)
-        )
-      )
-    }
-    row.names(d) <- paste("cluster",1:input$nbclust)
-    d
-  }, extensions = c('FixedColumns', 'Buttons'), server = FALSE, options = list(
-    dom = 'Btipr',
-    scrollX = TRUE,
-    fixedColumns = list(leftColumns = 1),
-    buttons = c('copy', 'csv', 'excel', 'pdf')
-  ))
-  
-  output$freqJumpByCluster <- DT::renderDataTable({
-    jump <-data.frame(id = names(nJump_data_CFDA()),
-                 jump = as.vector(nJump_data_CFDA()))
-    group <-cbind.data.frame(id = names(class()), group = as.vector(class()))
-    jumpMerge <- merge(jump, group, by = "id")
-    t <- table(jumpMerge$group, jumpMerge$jump)
-    t <- as.data.frame.matrix(t)
+}, extensions = c('FixedColumns', 'Buttons'), server = FALSE, options = list(
+  dom = 'Btipr',
+  scrollX = TRUE,
+  fixedColumns = list(leftColumns = 1),
+  buttons = c('copy', 'csv', 'excel', 'pdf')
+))
+
+output$tableJumpByCluster <- DT::renderDataTable({
+  jump <-
+    data.frame(id = names(nJump_data_CFDA()),
+               jump = as.vector(nJump_data_CFDA()))
+  group <-
+    cbind.data.frame(id = names(class()), group = as.vector(class()))
+  jumpMerge <- merge(jump, group, by = "id")
+  t <- table(jumpMerge$group, jumpMerge$jump)
+  if (input$tableChoiceCluster == "prop") {
+    t <- as.data.frame.matrix(prop.table(t))
     row_som <- apply(t, 1, sum)
     col_som <- apply(t, 2, sum)
-    res <-rbind.data.frame(cbind.data.frame(t, total = row_som), total = c(col_som, sum(col_som)))
+    res <-
+      rbind.data.frame(cbind.data.frame(t, total = row_som),
+                       total = c(col_som, sum(col_som)))
+    res <- round(res, 4) * 100
     row.names(res) <- c(paste("cluster",1:input$nbclust),"total")
-    res
+  } else if (input$tableChoiceCluster == "row") {
+    res <- as.data.frame.matrix(round(lprop(t), 2))
+    row.names(res) <- c(paste("cluster",1:input$nbclust),"Ensemble")
     
-  }, extensions = c('FixedColumns', 'Buttons'), server = FALSE, options = list(
-    dom = 'Btipr',
-    scrollX = TRUE,
-    fixedColumns = list(leftColumns = 1),
-    buttons = c('copy', 'csv', 'excel', 'pdf')
-  ))
+  } else{
+    res <- as.data.frame.matrix(round(cprop(t), 2))
+    row.names(res) <- c(paste("cluster",1:input$nbclust),"total")
+    
+  }
   
-  output$tableJumpByCluster <- DT::renderDataTable({
-    jump <-
-      data.frame(id = names(nJump_data_CFDA()),
-                 jump = as.vector(nJump_data_CFDA()))
-    group <-
-      cbind.data.frame(id = names(class()), group = as.vector(class()))
-    jumpMerge <- merge(jump, group, by = "id")
-    t <- table(jumpMerge$group, jumpMerge$jump)
-    if (input$tableChoiceCluster == "prop") {
-      t <- as.data.frame.matrix(prop.table(t))
-      row_som <- apply(t, 1, sum)
-      col_som <- apply(t, 2, sum)
-      res <-
-        rbind.data.frame(cbind.data.frame(t, total = row_som),
-                         total = c(col_som, sum(col_som)))
-      res <- round(res, 4) * 100
-      row.names(res) <- c(paste("cluster",1:input$nbclust),"total")
-    } else if (input$tableChoiceCluster == "row") {
-      res <- as.data.frame.matrix(round(lprop(t), 2))
-      row.names(res) <- c(paste("cluster",1:input$nbclust),"Ensemble")
-      
-    } else{
-      res <- as.data.frame.matrix(round(cprop(t), 2))
-      row.names(res) <- c(paste("cluster",1:input$nbclust),"total")
-      
-    }
-    
-    res
-    
-  }, extensions = c('FixedColumns', 'Buttons'), server = FALSE, options = list(
-    dom = 'Btipr',
-    scrollX = TRUE,
-    fixedColumns = list(leftColumns = 1),
-    buttons = c('copy', 'csv', 'excel', 'pdf')
-  ))
+  res
   
-  ##Time spnet by state by groupe
-  observe({
-    req(input$nbclust)
-    timeSpent <- time_spent_data_CFDA()
-    mod <- colnames(timeSpent)
-    lapply(mod, function(par) {
-      d <- as.data.frame(matrix(ncol = 8, nrow = 0))
-      for (i in 1:input$nbclust) {
-        idToKeep <- names(class()[class() == i])
-        time <- timeSpent[names(timeSpent[, par]) %in% idToKeep, par]
-        q <- quantile(time)
-        d <- rbind.data.frame(
-          d,
-          data.frame(
-            mean = round(mean(time), 2),
-            median = round(q[3], 2),
-            Q1 = round(q[2], 2),
-            Q3 = round(q[4], 2),
-            min = round(q[1], 2),
-            max = round(q[5], 2),
-            sd = round(sd(time), 2),
-            nbInd = length(time)
-          )
-        )
-      }
-      time <- timeSpent[, par]
+}, extensions = c('FixedColumns', 'Buttons'), server = FALSE, options = list(
+  dom = 'Btipr',
+  scrollX = TRUE,
+  fixedColumns = list(leftColumns = 1),
+  buttons = c('copy', 'csv', 'excel', 'pdf')
+))
+
+##Time spnet by state by groupe
+observe({
+  req(input$nbclust)
+  timeSpent <- time_spent_data_CFDA()
+  mod <- colnames(timeSpent)
+  lapply(mod, function(par) {
+    d <- as.data.frame(matrix(ncol = 8, nrow = 0))
+    for (i in 1:input$nbclust) {
+      idToKeep <- names(class()[class() == i])
+      time <- timeSpent[names(timeSpent[, par]) %in% idToKeep, par]
+      q <- quantile(time)
       d <- rbind.data.frame(
         d,
         data.frame(
-          mean = round(mean(time), 2),
-          median = round(q[3], 2),
+          Mean = round(mean(time), 2),
+          Median = round(q[3], 2),
           Q1 = round(q[2], 2),
           Q3 = round(q[4], 2),
-          min = round(q[1], 2),
-          max = round(q[5], 2),
-          sd = round(sd(time), 2),
-          nbInd = length(time)
+          Min = round(q[1], 2),
+          Max = round(q[5], 2),
+          Sd = round(sd(time), 2),
+          Number = length(time)
         )
       )
-      row.names(d) <- c(paste("cluster",1:input$nbclust), "All")
-      plotname <- paste("timeSpentCluster", par, sep = "_")
-      
-      output[[paste0("download", plotname)]] <- downloadHandler(
-        filename =  function() {
-          paste("bygroup", "csv", sep = ".")
-        },
-        content = function(file) {
-          write.csv(d, file = file)
-        }
+    }
+    time <- timeSpent[, par]
+    q <- quantile(time)
+    d <- rbind.data.frame(
+      d,
+      data.frame(
+        Mean = round(mean(time), 2),
+        Median = round(q[3], 2),
+        Q1 = round(q[2], 2),
+        Q3 = round(q[4], 2),
+        Min = round(q[1], 2),
+        Max = round(q[5], 2),
+        Sd = round(sd(time), 2),
+        Number = length(time)
       )
-      
-      output[[paste("timeSpentCluster", par, sep = "_")]] <-
-        DT::renderDataTable({
-          d
-        }, extensions = c('FixedColumns', 'Buttons'), server = FALSE, options = list(
-          dom = 'Btipr',
-          scrollX = TRUE,
-          fixedColumns = list(leftColumns = 1, rightColumns = 1),
-          buttons = c('copy', 'csv', 'excel', 'pdf')
-        ))
-    })
+    )
+    row.names(d) <- c(paste("Cluster",1:input$nbclust), "All")
+    plotname <- paste("timeSpentCluster", par, sep = "_")
+    
+    output[[paste0("download", plotname)]] <- downloadHandler(
+      filename =  function() {
+        paste("bygroup", "csv", sep = ".")
+      },
+      content = function(file) {
+        write.csv(d, file = file)
+      }
+    )
+    
+    output[[paste("timeSpentCluster", par, sep = "_")]] <-
+      DT::renderDataTable({
+        d
+      }, extensions = c('FixedColumns', 'Buttons'), server = FALSE, options = list(
+        dom = 'Btipr',
+        scrollX = TRUE,
+        fixedColumns = list(leftColumns = 1, rightColumns = 1),
+        buttons = c('copy', 'csv', 'excel', 'pdf')
+      ))
   })
-  
-  ##create time spent by group
-  output$timeStateByCluster <- renderUI({
-    req(input$nbclust)
-    mod = colnames(time_spent_data_CFDA())
-    summary_output_list <- lapply(mod, function(par) {
-      plotname <- paste("timeSpentCluster", par, sep = "_")
-      column(12,
-             box(width=12,title=paste("State :", par),solidHeader = TRUE,status="danger",
-                       DTOutput(plotname)))
-      
-    })
-    do.call(tagList, summary_output_list)
+})
+
+##create time spent by group
+output$timeStateByCluster <- renderUI({
+  req(input$nbclust)
+  mod = colnames(time_spent_data_CFDA())
+  summary_output_list <- lapply(mod, function(par) {
+    plotname <- paste("timeSpentCluster", par, sep = "_")
+    column(12,
+           box(width=12,title=paste("State :", par),solidHeader = TRUE,status="danger",
+               DTOutput(plotname)))
     
   })
+  do.call(tagList, summary_output_list)
   
-  
-  observe({
-    req(input$nbclust)
-    timeSpent <- time_spent_data_CFDA()
-    class_id <-data.frame(id = names(class()),
-                          res_class_cluster = as.vector(class()))
-    d2<-cbind.data.frame(as.data.frame(timeSpent[,1:ncol(timeSpent)]),id=row.names(timeSpent))
-    d1<-merge(d2,class_id,by="id")
-    mod <- colnames(timeSpent)
-    lapply(mod, function(par){
-         g<-ggplot(data=d1[,c("res_class_cluster",par)],aes(x=as.factor(res_class_cluster),y=d1[,par],fill=as.factor(res_class_cluster)))+geom_boxplot()+xlab("cluster")+ylab("time spent")+labs(fill="cluster")
-         output[[paste("timeSpentByStateCluster",par,sep="_")]]<-renderPlotly({
-           g
-         })
-      })
+})
+
+
+observe({
+  req(input$nbclust)
+  timeSpent <- time_spent_data_CFDA()
+  class_id <-data.frame(id = names(class()),
+                        res_class_cluster = as.vector(class()))
+  d2<-cbind.data.frame(as.data.frame(timeSpent[,1:ncol(timeSpent)]),id=row.names(timeSpent))
+  d1<-merge(d2,class_id,by="id")
+  mod <- colnames(timeSpent)
+  lapply(mod, function(par){
+    dAll<-d1
+    dAll$res_class_cluster<-"All"
+    d1<-rbind.data.frame(d1,dAll)
+    g<-ggplot(data=d1[,c("res_class_cluster",par)],aes(x=as.factor(res_class_cluster),y=d1[,par],fill=as.factor(res_class_cluster)))+geom_boxplot()+xlab("Cluster")+ylab("Time spent")+labs(fill="Cluster")+scale_fill_manual(values=rep(as.vector(color_data_CFDA()[names(color_data_CFDA())==par]),input$nbclust+1))
+    output[[paste("timeSpentByStateCluster",par,sep="_")]]<-renderPlotly({
+      g
     })
-  
+  })
+})
+
 output$timeStateGraphByAmongCluster <- renderUI({
   req(input$nbclust)
   mod = colnames(time_spent_data_CFDA())
@@ -2113,103 +2163,110 @@ output$timeStateGraphByAmongCluster <- renderUI({
     plotname <- paste("timeSpentByStateCluster", par, sep = "_")
     column(12,
            box(width=12,title= paste("State :", par),status="danger", solidHeader=TRUE,
-                     shinycssloaders::withSpinner( plotlyOutput(plotname),type = getOption("spinner.type", default = 6),
-                                                   color = getOption("spinner.color", default = "#d73925"))))
+               shinycssloaders::withSpinner( plotlyOutput(plotname),type = getOption("spinner.type", default = 6),
+                                             color = getOption("spinner.color", default = "#d73925"))))
     
   })
   do.call(tagList, summary_output_list)
   
 })
-  ##Markov
-  
-  observe({
-    req(input$nbclust)
-    lapply(c(1:input$nbclust), function(par) {
-      withProgress(message = 'making plots',
-                   detail = 'please wait until the end',
-                   value = 0,
-                   {
-                     incProgress(1 / 4)
-                     idToKeep <- names(class()[class() == par])
-                     data <- data_CFDA()[data_CFDA()$id %in% idToKeep, ]
-                     mark <- estimate_Markov(data[, c("id", "state", "time")])
-                     output[[paste("graphTransitionCluster", par, sep = "_")]] <-
-                       renderPlot({
-                         plot(mark)
-                       })
-                     output[[paste("matTransitionCluster", par, sep = "_")]] <-
-                       renderPrint({
-                         round(mark$P,3)
-                       })
-                     output[[paste("nJumpMatCluster", par, sep = "_")]] <-
-                       renderPrint({
-                         statetable(data)
-                       })
-                     output[[paste("expoLawCluster", par, sep = "_")]] <-
-                       renderPrint({
-                         round(mark$lambda,3)
-                       })
-                   })
+
+observe({
+  req(input$nbclust)
+  lapply(c(1:input$nbclust), function(par) {
+    withProgress(message = 'making plots',
+                 detail = 'please wait until the end',
+                 value = 0,
+                 {
+                   incProgress(1 / 4)
+                   idToKeep <- names(class()[class() == par])
+                   data <- data_CFDA()[data_CFDA()$id %in% idToKeep, ]
+                   mark <- estimate_Markov(data[, c("id", "state", "time")])
+                   r<-color_data_CFDA()
+                   
+                   output[[paste("graphTransitionCluster", par, sep = "_")]] <-
+                     renderPlot({
+                       r<-r[names(r) %in% colnames(mark$P)]
+                      plot(mark,box.col = r)
+                     })
+                   output[[paste("matTransitionCluster", par, sep = "_")]] <-
+                     renderPrint({
+                      round(mark$P,3)
+                     })
+                   output[[paste("nJumpMatCluster", par, sep = "_")]] <-
+                     renderPrint({
+                       statetable(data)
+                     })
+                   output[[paste("expoLawCluster", par, sep = "_")]] <-
+                     renderPrint({
+                       round(mark$lambda,3)
+                     })
+                 })
+  })
+})
+
+output$markovByCluster <- renderUI({
+  t <- table(class())
+  req(input$nbclust)
+  if (input$choixStatsMarkovCluster == 'transiMat') {
+    plot_output_list <- lapply(c(1:input$nbclust), function(par) {
+      plotname <- paste("matTransitionCluster", par, sep = "_")
+      column(4,
+             box(width=12,status="danger", solidHeader=TRUE,title=paste("Group :", par, "(n :", t[par], ")"),
+                 verbatimTextOutput(plotname),
+                 DTOutput(paste("dataCluster", par, sep = "_"))))
     })
-  })
-  
-  output$markovByCluster <- renderUI({
-    t <- table(class())
-    req(input$nbclust)
-    if (input$choixStatsMarkovCluster == 'transiMat') {
-      plot_output_list <- lapply(c(1:input$nbclust), function(par) {
-        plotname <- paste("matTransitionCluster", par, sep = "_")
-        column(4,
-               box(width=12,status="danger", solidHeader=TRUE,title=paste("Groupe :", par, "(n :", t[par], ")"),
-               verbatimTextOutput(plotname)))
-      })
-    } else if (input$choixStatsMarkovCluster == 'transiGraph') {
-      plot_output_list <- lapply(c(1:input$nbclust), function(par) {
-        plotname <- paste("graphTransitionCluster", par, sep = "_")
-        column(4,
-               box(width=12,status="danger", solidHeader=TRUE,title=paste("Group :", par, "(n :", t[par], ")"),
-               shinycssloaders::withSpinner(plotOutput(plotname),type = getOption("spinner.type", default = 6),
-                                            color = getOption("spinner.color", default = "#d73925"))))
-      })
-    } else if (input$choixStatsMarkovCluster == 'jump') {
-      plot_output_list <- lapply(c(1:input$nbclust), function(par) {
-        plotname <- paste("nJumpMatCluster", par, sep = "_")
-        column(4,
-               box(width=12,status="danger", solidHeader=TRUE,title=paste("Group :", par, "(n :", t[par], ")"),
-               verbatimTextOutput(plotname)))
-      })
-    } else{
-      plot_output_list <- lapply(c(1:input$nbclust), function(par) {
-        plotname <- paste("expoLawCluster", par, sep = "_")
-        column(4,
-               box(width=12,status="danger", solidHeader=TRUE,title=paste("Group :", par, "(n :", t[par], ")"),
-               verbatimTextOutput(plotname)))
-      })
-    }
-    do.call(tagList, plot_output_list)
-  })
-  
-  ##Download result of clustering
-  data_by_cluster <- reactive({
-    req(input$nbclust)
-    ldata <- lapply(c(1:input$nbclust), function(par) {
-      idToKeep <- names(class()[class() == par])
-      data <- data_CFDA()[data_CFDA()$id %in% idToKeep, ]
-      if(listGroupVar())
+  } else if (input$choixStatsMarkovCluster == 'transiGraph') {
+    plot_output_list <- lapply(c(1:input$nbclust), function(par) {
+      plotname <- paste("graphTransitionCluster", par, sep = "_")
+      column(4,
+             box(width=12,status="danger", solidHeader=TRUE,title=paste("Group :", par, "(n :", t[par], ")"),
+                 shinycssloaders::withSpinner(plotOutput(plotname),type = getOption("spinner.type", default = 6),
+                                              color = getOption("spinner.color", default = "#d73925"))))
+    })
+  } else if (input$choixStatsMarkovCluster == 'jump') {
+    plot_output_list <- lapply(c(1:input$nbclust), function(par) {
+      plotname <- paste("nJumpMatCluster", par, sep = "_")
+      column(4,
+             box(width=12,status="danger", solidHeader=TRUE,title=paste("Group :", par, "(n :", t[par], ")"),
+                 verbatimTextOutput(plotname)))
+    })
+  } else{
+    plot_output_list <- lapply(c(1:input$nbclust), function(par) {
+      plotname <- paste("expoLawCluster", par, sep = "_")
+      column(4,
+             box(width=12,status="danger", solidHeader=TRUE,title=paste("Group :", par, "(n :", t[par], ")"),
+                 verbatimTextOutput(plotname)))
+    })
+  }
+  do.call(tagList, plot_output_list)
+})
+
+##Download result of clustering
+data_by_cluster <- reactive({
+  req(input$nbclust)
+  ldata <- lapply(c(1:input$nbclust), function(par) {
+    idToKeep <- names(class()[class() == par])
+    data <- data_CFDA()[data_CFDA()$id %in% idToKeep, ]
+    if(length(listGroupVar())==0){
+      data
+    }else{
       restData <-data_used()[data_used()$id %in% idToKeep, c("id", listGroupVar())]
       dataClust <- unique(merge(data, restData, by = "id"))
       dataClust
-    })
-    names(ldata) <- paste0("cluster", 1:input$nbclust)
+    }
+     
   })
-  
-  data_with_group_var <- reactive({
-    req(input$nbclust)
-    if(length(listGroupVar)==0){
-      data_CAH()
-    }else{
-    class_id <-
-      data.frame(id = names(class()),
+  names(ldata) <- paste0("cluster", 1:input$nbclust)
+  ldata
+})
+
+data_with_group_var <- reactive({
+  req(input$nbclust)
+  if(length(listGroupVar())==0){
+    data_CAH()
+  }else{
+    class_id <-data.frame(id = names(class()),
                  res_class_cluster = as.vector(class()))
     data <-
       merge(data_CFDA()[data_CFDA()$id %in% class_id$id, ], class_id, by = "id")
@@ -2217,185 +2274,187 @@ output$timeStateGraphByAmongCluster <- renderUI({
       data_used()[data_used()$id %in% class_id$id, c("id", listGroupVar())]
     dataClust <- unique(merge(data, restData, by = "id"))
     dataClust}
-  })
+})
+
+output$downloadCAH <- downloadHandler(
+  filename <- function() {
+    paste("resClu.RData")
+  },
   
-  output$downloadCAH <- downloadHandler(
-    filename <- function() {
-      paste("resClu.RData")
-    },
-    
-    content = function(file) {
-      results_clustering <-
-        list(
-          hc = hc(),
-          data = data_with_group_var(),
-          cluster = class(),
-          dataByCluster = data_by_cluster()
-        )
-      save(results_clustering, file = file)
-    }
+  content = function(file) {
+    results_clustering <-
+      list(
+        hc = hc(),
+        data = data_with_group_var(),
+        cluster = class() ,
+        dataByCluster = data_by_cluster()
+      )
+    save(results_clustering, file = file)
+  }
+)
+
+
+
+##Descriptiion of cluster by group variable
+output$groupVarDescCluster <- renderUI({
+  selectizeInput("choixGroupVarClusterDesc",
+                 "Choose a variable",
+                 choices = listGroupVar())
+})
+
+
+
+##Descrip with qualitative
+output$freqGroupVarFiniByCluster <- DT::renderDataTable({
+  validate(
+    need(
+      nrow(unique(data_used()[, c("id", input$choixGroupVarClusterDesc)])) == length(unique(data_used()$id)),
+      "
+      this variable can't be used as group variable because some indiviudas has more than 1 modality for this variable"
+    )
   )
   
-  
-  
-  ##Descriptiion of cluster by group variable
-  output$groupVarDescCluster <- renderUI({
-    selectizeInput("choixGroupVarClusterDesc",
-                   "choose a variable",
-                   choices = listGroupVar())
-  })
-  
-  
-  
-  ##Descrip with qualitative
-  output$freqGroupVarFiniByCluster <- DT::renderDataTable({
-    validate(
-      need(
-        nrow(unique(data_used()[, c("id", input$choixGroupVarClusterDesc)])) == length(unique(data_used()$id)),
-        "
-      this variable can't be used as group variable because some indiviudas has more than 1 modality for this variable"
-      )
+  data <- data_with_group_var()
+  data <-unique(data[, c("id",
+                         "res_class_cluster",
+                         input$choixGroupVarClusterDesc)])
+  if (input$typeVarGroup %in% c("as.factor", "as.integer")) {
+    if (input$typeVarGroup == "as.factor") {
+      data[, input$choixGroupVarClusterDesc] <-
+        as.factor(data[, input$choixGroupVarClusterDesc])
+    } else{
+      data[, input$choixGroupVarClusterDesc] <-
+        as.integer(data[, input$choixGroupVarClusterDesc])
+    }
+    t <-table(data$res_class_cluster, data[, input$choixGroupVarClusterDesc])
+    t <- as.data.frame.matrix(t)
+    row_som <- apply(t, 1, sum)
+    col_som <- apply(t, 2, sum)
+    freq_table <-rbind.data.frame(cbind.data.frame(t, total = row_som),
+                                  total = c(col_som, sum(col_som)))
+    row.names(freq_table)<-c(paste("Cluster",1:input$nbclust),"total")
+    freq_table
+  }
+}, extensions = c('FixedColumns', 'Buttons'), server = FALSE, options = list(
+  dom = 'Btipr',
+  scrollX = TRUE,
+  fixedColumns = list(leftColumns = 1),
+  buttons = c('copy', 'csv', 'excel', 'pdf')
+))
+
+output$tableGroupVarFiniByCluster <- DT::renderDataTable({
+  validate(
+    need(
+      nrow(unique(data_used()[, c("id", input$choixGroupVarClusterDesc)])) == length(unique(data_used()$id)),
+      "this variable can't be used as group variable because some indiviudas has more than 1 modality for this variable"
     )
-    
-    data <- data_with_group_var()
-    data <-unique(data[, c("id",
-                      "res_class_cluster",
-                      input$choixGroupVarClusterDesc)])
-    if (input$typeVarGroup %in% c("as.factor", "as.integer")) {
-      if (input$typeVarGroup == "as.factor") {
-        data[, input$choixGroupVarClusterDesc] <-
-          as.factor(data[, input$choixGroupVarClusterDesc])
-      } else{
-        data[, input$choixGroupVarClusterDesc] <-
-          as.integer(data[, input$choixGroupVarClusterDesc])
-      }
-      t <-table(data$res_class_cluster, data[, input$choixGroupVarClusterDesc])
-      t <- as.data.frame.matrix(t)
+  )
+  
+  data <- data_with_group_var()
+  data <-unique(data[, c("id",
+                         "res_class_cluster",
+                         input$choixGroupVarClusterDesc)])
+  if (input$typeVarGroup %in% c("as.factor", "as.integer")) {
+    if (input$typeVarGroup == "as.factor") {
+      data[, input$choixGroupVarClusterDesc] <-
+        as.factor(data[, input$choixGroupVarClusterDesc])
+    } else{
+      data[, input$choixGroupVarClusterDesc] <-
+        as.integer(data[, input$choixGroupVarClusterDesc])
+    }
+    t <-table(data$res_class_cluster, data[, input$choixGroupVarClusterDesc])
+    if (input$tableGroupVarFiniChoiceCluster == "prop") {
+      t <- as.data.frame.matrix(prop.table(t))
       row_som <- apply(t, 1, sum)
       col_som <- apply(t, 2, sum)
-      freq_table <-rbind.data.frame(cbind.data.frame(t, total = row_som),
+      res <-
+        rbind.data.frame(cbind.data.frame(t, total = row_som),
                          total = c(col_som, sum(col_som)))
-      row.names(freq_table)<-c(paste("Cluster",1:input$nbclust),"total")
-      freq_table
+      res <- round(res, 4) * 100
+      row.names(res)<-c(paste("Cluster",1:input$nbclust),"Total")
+    } else if (input$tableGroupVarFiniChoiceCluster == "row") {
+      res <- as.data.frame.matrix(round(lprop(t), 2))
+      row.names(res)<-c(paste("Cluster",1:input$nbclust),"Ensemble")
+    } else{
+      res <- as.data.frame.matrix(round(cprop(t), 2))
+      row.names(res)<-c(paste("Cluster",1:input$nbclust),"Total")
     }
-  }, extensions = c('FixedColumns', 'Buttons'), server = FALSE, options = list(
-    dom = 'Btipr',
-    scrollX = TRUE,
-    fixedColumns = list(leftColumns = 1),
-    buttons = c('copy', 'csv', 'excel', 'pdf')
-  ))
+    res
+  }
   
-  output$tableGroupVarFiniByCluster <- DT::renderDataTable({
-    validate(
-      need(
-        nrow(unique(data_used()[, c("id", input$choixGroupVarClusterDesc)])) == length(unique(data_used()$id)),
-        "this variable can't be used as group variable because some indiviudas has more than 1 modality for this variable"
-      )
-    )
-    
-    data <- data_with_group_var()
-    data <-unique(data[, c("id",
-                      "res_class_cluster",
-                      input$choixGroupVarClusterDesc)])
-    if (input$typeVarGroup %in% c("as.factor", "as.integer")) {
-      if (input$typeVarGroup == "as.factor") {
-        data[, input$choixGroupVarClusterDesc] <-
-          as.factor(data[, input$choixGroupVarClusterDesc])
-      } else{
-        data[, input$choixGroupVarClusterDesc] <-
-          as.integer(data[, input$choixGroupVarClusterDesc])
-      }
-      t <-table(data$res_class_cluster, data[, input$choixGroupVarClusterDesc])
-      if (input$tableGroupVarFiniChoiceCluster == "prop") {
-        t <- as.data.frame.matrix(prop.table(t))
-        row_som <- apply(t, 1, sum)
-        col_som <- apply(t, 2, sum)
-        res <-
-          rbind.data.frame(cbind.data.frame(t, total = row_som),
-                           total = c(col_som, sum(col_som)))
-        res <- round(res, 4) * 100
-        row.names(res)<-c(paste("Cluster",1:input$nbclust),"total")
-      } else if (input$tableGroupVarFiniChoiceCluster == "row") {
-        res <- as.data.frame.matrix(round(lprop(t), 2))
-        row.names(res)<-c(paste("Cluster",1:input$nbclust),"Ensemble")
-      } else{
-        res <- as.data.frame.matrix(round(cprop(t), 2))
-        row.names(res)<-c(paste("Cluster",1:input$nbclust),"total")
-      }
-      res
-    }
-    
-  }, extensions = c('FixedColumns', 'Buttons'), server = FALSE, options = list(
-    dom = 'Btipr',
-    scrollX = TRUE,
-    fixedColumns = list(leftColumns = 1),
-    buttons = c('copy', 'csv', 'excel', 'pdf')
-  ))
-  
-  output$numVarGroupCluster <- DT::renderDataTable({
-    req(input$nbclust)
-    validate(
-      need(
-        nrow(unique(data_used()[, c("id", input$choixGroupVarClusterDesc)])) == length(unique(data_used()$id)),
-        "
+}, extensions = c('FixedColumns', 'Buttons'), server = FALSE, options = list(
+  dom = 'Btipr',
+  scrollX = TRUE,
+  fixedColumns = list(leftColumns = 1),
+  buttons = c('copy', 'csv', 'excel', 'pdf')
+))
+
+output$numVarGroupCluster <- DT::renderDataTable({
+  req(input$nbclust)
+  validate(
+    need(
+      nrow(unique(data_used()[, c("id", input$choixGroupVarClusterDesc)])) == length(unique(data_used()$id)),
+      "
       this variable can't be used as group variable because some indiviudas has more than 1 modality for this variable"
-      )
     )
-    
-    data <- data_with_group_var()
-    data <-
-      unique(data[, c("id",
-                      "res_class_cluster",
-                      input$choixGroupVarClusterDesc)])
-    if (input$typeVarGroup == "as.numeric") {
-      data[, input$choixGroupVarClusterDesc] <-
-        as.numeric(data[, input$choixGroupVarClusterDesc])
-      d = as.data.frame(matrix(nrow = 0, ncol = 8))
-      for (i in 1:input$nbclust) {
-        dt <- data[data$res_class_cluster == i, ]
-        var <- dt[, input$choixGroupVarClusterDesc]
-        q <- quantile(var)
-        d <- rbind.data.frame(
-          d,
-          data.frame(
-            mean = round(mean(var), 2),
-            median = round(q[3], 2),
-            Q1 = round(q[2], 2),
-            Q3 = round(q[4], 2),
-            min = round(q[1], 2),
-            max = round(q[5], 2),
-            sd = round(sd(var), 2),
-            nbInd = length(var)
-          )
-        )
-      }
-      q = quantile(data[, input$choixGroupVarClusterDesc])
+  )
+  
+  data <- data_with_group_var()
+  data <-
+    unique(data[, c("id",
+                    "res_class_cluster",
+                    input$choixGroupVarClusterDesc)])
+  if (input$typeVarGroup == "as.numeric") {
+    data[, input$choixGroupVarClusterDesc] <-
+      as.numeric(data[, input$choixGroupVarClusterDesc])
+    d = as.data.frame(matrix(nrow = 0, ncol = 8))
+    for (i in 1:input$nbclust) {
+      dt <- data[data$res_class_cluster == i, ]
+      var <- dt[, input$choixGroupVarClusterDesc]
+      q <- quantile(var)
       d <- rbind.data.frame(
         d,
         data.frame(
-          mean = round(mean(data[, input$choixGroupVarClusterDesc]), 2),
-          median = round(q[3], 2),
+          Mean = round(mean(var), 2),
+          Median = round(q[3], 2),
           Q1 = round(q[2], 2),
           Q3 = round(q[4], 2),
-          min = round(q[1], 2),
-          max = round(q[5], 2),
-          sd = round(sd(data[, input$choixGroupVarClusterDesc]), 2),
-          nbInd = length(data[, input$choixGroupVarClusterDesc])
+          Min = round(q[1], 2),
+          Max = round(q[5], 2),
+          Sd = round(sd(var), 2),
+          Number = length(var)
         )
       )
-      row.names(d) <- c(paste("cluster", 1:input$nbclust), "All")
-      
-      
-      d
     }
+    q = quantile(data[, input$choixGroupVarClusterDesc])
+    d <- rbind.data.frame(
+      d,
+      data.frame(
+        Mean = round(mean(data[, input$choixGroupVarClusterDesc]), 2),
+        Median = round(q[3], 2),
+        Q1 = round(q[2], 2),
+        Q3 = round(q[4], 2),
+        Min = round(q[1], 2),
+        Max = round(q[5], 2),
+        Sd = round(sd(data[, input$choixGroupVarClusterDesc]), 2),
+        Number = length(data[, input$choixGroupVarClusterDesc])
+      )
+    )
+    row.names(d) <- c(paste("Cluster", 1:input$nbclust), "All")
     
-  }, extensions = c('FixedColumns', 'Buttons'), server = FALSE, options = list(
-    dom = 'Btipr',
-    scrollX = TRUE,
-    fixedColumns = list(leftColumns = 1),
-    buttons = c('copy', 'csv', 'excel', 'pdf')
-  ))
+    
+    d
+  }
   
+}, extensions = c('FixedColumns', 'Buttons'), server = FALSE, options = list(
+  dom = 'Btipr',
+  scrollX = TRUE,
+  fixedColumns = list(leftColumns = 1),
+  buttons = c('copy', 'csv', 'excel', 'pdf')
+))
+
+
+
   ##5.Simulate markov chain
   #########################
   
@@ -2403,7 +2462,7 @@ output$timeStateGraphByAmongCluster <- renderUI({
   output$probabilityGp <- renderUI({
     matrixInput(
       "groupProbability",
-      "probability to be in a group",
+      "Probability to be in a group",
       value = matrix(
         rep(1 / input$nbComponent, input$nbComponent),
         1,
@@ -2439,7 +2498,7 @@ output$timeStateGraphByAmongCluster <- renderUI({
                         TRUE)
         )
       )
-    
+    if(input$nbComponent>1){
     for (i in 2:input$nbComponent) {
       t <-
         tagList(
@@ -2459,6 +2518,7 @@ output$timeStateGraphByAmongCluster <- renderUI({
           )
         )
     }
+    }
     t
     
   })
@@ -2472,7 +2532,7 @@ output$timeStateGraphByAmongCluster <- renderUI({
           t,
           matrixInput(
             paste("sejourTimeParaMix", i),
-            paste("exponential parameter of sejour time", i),
+            paste("Exponential parameter of sejour time", i),
             value = matrix(1, 1, input$nbStateMix),
             class = "numeric",
             rows = list(names = FALSE),
@@ -2492,7 +2552,7 @@ output$timeStateGraphByAmongCluster <- renderUI({
           t,
           matrixInput(
             paste("initialLawMix", i),
-            paste("initialLaw", i),
+            paste("Initial law", i),
             value = matrix(
               rep(1 / input$nbStateMix, input$nbStateMix),
               1,
