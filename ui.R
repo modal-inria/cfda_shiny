@@ -247,6 +247,9 @@ ui<-dashboardPage(
           )
         ),
         tabItem(
+          #############################
+          #3. Descriptive statistics ##
+          #############################
           tabName = "descriptiveStatistics",
           conditionalPanel(
             "output.fileUploaded",
@@ -280,7 +283,145 @@ ui<-dashboardPage(
                              column(4, uiOutput("groupVarStatistics"))
                            )
                          ))),
-            uiOutput("statsRes")
+            conditionalPanel(
+              ##########
+              # All  ##
+              ##########
+              "input.choixParaGroupeStatistics=='All'",
+              conditionalPanel(
+                "input.choixGraphiqueStats=='summary'",
+                box(
+                  width = 12,
+                  title = "Summary of data set",status = "danger", solidHeader = TRUE,
+                  verbatimTextOutput("summary")
+                )
+                
+              ),
+              conditionalPanel(
+                "input.choixGraphiqueStats=='jump' ||input.choixGraphiqueStats=='duration' ",
+                column(4,
+                       tags$div(
+                         box(
+                           width = 12,
+                           title = "Summary of number of jumps",status = "danger", solidHeader = TRUE,
+                           DTOutput("summaryStatsAll")
+                           
+                           
+                         ),
+                         conditionalPanel(
+                           "input.choixGraphiqueStats=='jump'",
+                           box(
+                             width = 12,
+                             title = "Frequencies and proportions",status = "danger", solidHeader = TRUE,
+                             DTOutput("nJumpTable")
+                           )
+                         )
+                       ))
+              ),
+              conditionalPanel(
+                "input.choixGraphiqueStats=='timeState'",
+                column(4,
+                       box(
+                         width = 12,status = "danger", solidHeader = TRUE,
+                         title = "Summary of time spent by state",
+                         DTOutput("timeSpentAllTable")
+                       ))
+              ),
+              conditionalPanel("input.choixGraphiqueStats!='summary'",
+                               column(8,
+                                      box(
+                                        width = 12,
+                                        status = "danger", 
+                                        shinycssloaders::withSpinner( plotlyOutput("plots", height = "1100px"),type = getOption("spinner.type", default = 6),
+                                                                      color = getOption("spinner.color", default = "#d73925"))
+                                      )
+                               ))
+              
+              
+            ),
+            conditionalPanel(
+              ############
+              # By group #
+              ############
+              "input.choixParaGroupeStatistics=='byGroup'",
+              conditionalPanel(
+                "input.choixGraphiqueStats=='summary'",
+                box(
+                  width = 12,
+                  title = "Summary of data set by group",status = "danger", solidHeader = TRUE,
+                  uiOutput("summaryGp")
+                )
+                
+              ),
+              conditionalPanel(
+                "input.choixGraphiqueStats=='jump' ||input.choixGraphiqueStats=='duration'",
+                column(4,
+                       tags$div(
+                         box(
+                           width = 12,
+                           title = "Summary of statistic by group",status = "danger", solidHeader = TRUE,
+                           DTOutput("summaryStatsByGroup")
+                         ),
+                         conditionalPanel(
+                           "input.choixGraphiqueStats=='jump'",
+                           box(
+                             width = 12,
+                             title = "Frequencies by group variable",status = "danger", solidHeader = TRUE,
+                             DTOutput("nJumpTableGroupFreq")
+                           ),
+                           box(
+                             width = 12,
+                             title = "Proportions by group variable",status = "danger", solidHeader = TRUE,
+                             selectizeInput(
+                               "tableChoiceGroupDesc",
+                               "Choose a table",
+                               choices = c(
+                                 "Proportions" = "prop",
+                                 "Row profiles" = "row",
+                                 "Column profiles" = "column"
+                               ),
+                               selected = "prop"
+                             ),
+                             DTOutput("nJumpTableGroupTable")
+                           )
+                         )
+                       )),
+                column( 8,
+                        box(
+                          width = 12,
+                          status = "danger",
+                          conditionalPanel(
+                            "input.choixGraphiqueStats=='jump'",
+                            shinycssloaders::withSpinner( plotlyOutput("jumpGp", height = "1100px"),type = getOption("spinner.type", default = 6),
+                                                          color = getOption("spinner.color", default = "#d73925"))
+                          ),
+                          conditionalPanel(
+                            "input.choixGraphiqueStats=='duration'",
+                            shinycssloaders::withSpinner( plotlyOutput("durationGp", height = "1100px"),type = getOption("spinner.type", default = 6),
+                                                          color = getOption("spinner.color", default = "#d73925"))
+                          ),
+                        )
+                )
+                
+              ),
+              conditionalPanel(
+                "input.choixGraphiqueStats=='timeState'",
+                column(4,
+                       box(
+                         width = 12,status = "danger", 
+                         uiOutput("timeSpentTableGp")
+                       )),
+                column(8,
+                       box(
+                         width = 12,status = "danger",
+                         shinycssloaders::withSpinner( plotlyOutput("timeStateGp", height = "1100px"),type = getOption("spinner.type", default = 6),
+                                                       color = getOption("spinner.color", default = "#d73925"))
+                       ))
+              )
+              
+              
+              
+            )
           ),
           conditionalPanel(
             "!output.fileUploaded",
@@ -288,7 +429,7 @@ ui<-dashboardPage(
           )
         ),
         ##############################
-        #  Markov chain estimation   #
+        #4.  Markov chain estimation #
         ##############################
         tabItem(
           tabName = "estimationOfMarkovChain",
@@ -314,7 +455,9 @@ ui<-dashboardPage(
             tabBox(
               width = 12,
               tabPanel(
+                ####Transition graph
                 "Transition graph",
+                fluidRow(
                 conditionalPanel(
                   "input.choixParaGroupeMarkov=='byGroup'",
                   fluidRow(uiOutput("transGraphByGroup"))
@@ -322,12 +465,14 @@ ui<-dashboardPage(
                 conditionalPanel(
                   "input.choixParaGroupeMarkov=='All'",
                   shinycssloaders::withSpinner(
-                    plotOutput("transGraphAll"),type = getOption("spinner.type", default = 6),
+                    
+                    plotOutput("transGraphAll"),type = getOption("spinner.type", default = 6)),
                     color = getOption("spinner.color", default = "#d73925"))
                 )
               )
               ,
               tabPanel(
+                ##Transition matrix
                 "Transition Matrix",
                 conditionalPanel(
                   "input.choixParaGroupeMarkov=='byGroup'",
@@ -339,6 +484,7 @@ ui<-dashboardPage(
                 )
               ),
               tabPanel(
+                ##Number of state change
                 "Number of state changes",
                 conditionalPanel(
                   "input.choixParaGroupeMarkov=='byGroup'",
@@ -350,6 +496,7 @@ ui<-dashboardPage(
                 )
               ),
               tabPanel(
+                ##Number 
                 "Probability to be in a state",
                 conditionalPanel(
                   "input.choixParaGroupeMarkov=='byGroup'",
@@ -388,6 +535,9 @@ ui<-dashboardPage(
           
         ),
         tabItem(
+          #############################
+          #5.1 factorial Analysis    ##
+          #############################
           tabName = "factorialAnalysis",
           conditionalPanel(
             "output.fileUploaded",
@@ -503,9 +653,9 @@ ui<-dashboardPage(
                                )))
                   )),
                 tabPanel(
-                  "Extrem individuals", 
+                  "Extreme individuals", 
                   fluidRow(
-                    box(width=12,title="Factorial plan with extrem individuals", status="danger",solidHeader = TRUE,
+                    box(width=12,title="Factorial plan with extreme individuals", status="danger",solidHeader = TRUE,
                         shinycssloaders::withSpinner(plotlyOutput("planfactExtremeIndividuals"),type = getOption("spinner.type", default = 6),
                                                      color = getOption("spinner.color", default = "#d73925"))),
                     dropdown(
@@ -525,7 +675,7 @@ ui<-dashboardPage(
                     ),
                     
                     
-                    box(width=12,title="Plot of trajectories of extrem individuals",status="danger",solidHeader = TRUE,
+                    box(width=12,title="Plot of trajectories of extreme individuals",status="danger",solidHeader = TRUE,
                         box(width=12,status="danger",solidHeader = FALSE,
                             uiOutput("axe1"),
                             shinycssloaders::withSpinner(plotOutput("plotDataExtremAxe1"),type = getOption("spinner.type", default = 6),
@@ -553,6 +703,9 @@ ui<-dashboardPage(
           
         ),
         tabItem(
+          #############################
+          #5.2 Clustering            ##
+          #############################
           tabName = "clustering",
           conditionalPanel(
             "output.fmcaUploaded",
@@ -620,7 +773,7 @@ ui<-dashboardPage(
                 width = 12,
                 title = "Dendrogram",
                 fluidRow(
-                  column(11, shinycssloaders::withSpinner(plotOutput("dendogramme", height = "900px"),type = getOption("spinner.type", default = 6),
+                  column(11, shinycssloaders::withSpinner(plotOutput("dendrogramme", height = "900px"),type = getOption("spinner.type", default = 6),
                                                           color = getOption("spinner.color", default = "#d73925"))),
                   column(1,
                          checkboxInput(inputId = "couper", label = "Cut dendrogram?"),
@@ -730,8 +883,7 @@ ui<-dashboardPage(
                                     c(
                                       "Transition matrix" = "transiMat",
                                       "Transition graph" = "transiGraph",
-                                      "Number of jumps" =
-                                        "jump",
+                                      "Number of jumps" ="jump",
                                       "Exponential law" = "expoLaw"
                                     )
                                 )
@@ -803,6 +955,9 @@ ui<-dashboardPage(
           )
         ),
         tabItem(tabName = "help",
+                ############
+                #7 help   ##
+                ############
                 tabBox(
                   width = 12,
                   tabPanel("import data",
@@ -811,27 +966,32 @@ ui<-dashboardPage(
                            p("After uploaded the file you can filter individuals by the number of jumps, the length of trajectories observed or choose the first n% individuals")  
                   ),
                   tabPanel("visualize data",
-                           p("this part allows you to visualize the trajectories of the individuals selected in import part. Some graphics options are provided")
+                           p("This part allows you to visualize the trajectories of the individuals selected in import part. Some graphics options are provided.")
                   ),
                   tabPanel("descriptive statistics",
                            p("In this part you can see the statistics provide by cfda package (number of jumps, summary of data, duration of trajectories and time spent in each state). If your dataset contains 
                                          other variables that can be use as group variable you can choose them to compute all of this statistics by group variable.")
                   ),
                   tabPanel("estimation of markov chain",
-                           p("in this part we assume than the data arise from a markov jump process and we compute all of the parameters of the model. You can also compute them by group variable")
+                           p("In this part we assume than the data arise from a markov jump process and we compute all of the parameters of the model. You can also compute them by group variable.")
                   ),
                   tabPanel("Analysis",
-                           p("This part contains 2 analysis : Factorial analysis and clustering analysis. You have to compute factorial analysis before use clusterinf functionnality"),
+                           p("This part contains 2 analysis : Factorial analysis and clustering analysis. You have to compute factorial analysis before use clustering functionnality."),
                            h3("Factorial Analysis"),
-                           p("You need to choose ending time and basis function"),
+                           p("You need to choose ending time,  extended state(s), a NA state name and basis function. The app compute the results and show some graphics (factorial plan, eigen values, ect)."),
                            h3("Clustering"),
-                           p("after compute factorial analysis you can make a clustering on principal component. You need to choose the method, the number of component or the percentage of variance"),
-                           p("After that the app compute the dendogram and other plots to help you to analyse the differents clusters")
+                           p("After compute factorial analysis you can make a clustering on principal component. You need to choose the method, the number of component or the percentage of variance."),
+                           p("After that the app compute the dendrogram and other plots to help you to analyse the differents clusters.")
                   ),
-                  tabPanel("simulate a mixture model")
+                  tabPanel("simulate a mixture model",
+                           p("This part is used to simulate a mixture model of Markov."),
+                           )
                 ) 
         ),
         tabItem(
+          ################################
+          # 6. Simulate mixture model   ##
+          ################################
           tabName = "simulateMarkov",
           box(
             width = 4,
