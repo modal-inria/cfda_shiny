@@ -55,7 +55,8 @@ ui<-dashboardPage(
       menuItem("Simulate a mixture model", tabName = "simulateMarkov"),
       menuItem("Help", tabName = "help"),
       
-      div(style="",tags$img(src = "inria_logo.png", width="100px"))
+      div(style="",tags$img(src = "inria_logo.png", width="100px")),
+      div(h3("Design by :"),h4("- Whillem TONGO"),h4("- Cristian PREDA"),h4("- Vincent VANDEWALLE"), h4("- Quentin GRIMONPREZ"))
     )
   ),
   dashboardBody(
