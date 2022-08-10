@@ -5,7 +5,7 @@ this is shiny dashboard for the cfda package.
 ## Installation
 
 ``` r
-install.packages(c("cfda","shinyMatrix","tidyverse","tractor.base","dplyr","shinydashboard","ggpubr","DT","plotly")) 
+install.packages(c("cfda","shinyMatrix","tidyverse","tractor.base","dplyr","shinydashboard","ggpubr","DT","plotly","questionr","shinyWidgets","shinycssloaders","scales","stringr")) 
 ```
 
 ## Run the shiny app
