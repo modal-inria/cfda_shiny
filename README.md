@@ -4,13 +4,22 @@ Shiny dashboard for the [cfda](https://github.com/modal-inria/cfda) R package.
 
 ## Installation
 
+Install the following R packages:
+
 ``` r
-install.packages(c("cfda", "tidyverse", "shiny", "shinydashboard", "shinyMatrix", "shinyWidgets", "shinycssloaders", "tractor.base", "dplyr", "ggpubr", "DT", "plotly", "questionr", "scales", "stringr"))
+install.packages(c("cfda", "shinydashboard", "shinyMatrix", "shinyWidgets", "shinycssloaders", "dplyr", "DT", "plotly"))
 ```
 
 ## Run the shiny app
 
+Once you have clone this repo, you can run the app with:
+
 ``` r
-if (!require("shiny")) install.packages("shiny")
+shiny::runApp()
+```
+
+To run the app without having this repo:
+
+``` r
 shiny::runGitHub("cfda_shiny", "modal-inria")
 ```

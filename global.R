@@ -18,10 +18,6 @@ if (!require("shinycssloaders")) {
   install.packages("shinycssloaders")
   library("shinycssloaders")
 }
-if (!require("dashboardthemes")) {
-  install.packages("dashboardthemes")
-  library("dashboardthemes")
-}
 if (!require("DT")) {
   install.packages("DT")
   library("DT")
@@ -34,34 +30,15 @@ if (!require("cfda")) {
   install.packages("cfda")
   library("cfda")
 }
-if (!require("tidyverse")) {
-  install.packages("tidyverse")
-  library("tidyverse")
-}
-if (!require("tractor.base")) {
-  install.packages("tractor.base")
-  library("tractor.base")
-}
 if (!require("dplyr")) {
   install.packages("dplyr")
   library("dplyr")
-}
-if (!require("ggpubr")) {
-  install.packages("ggpubr")
-  library("ggpubr")
-}
-if (!require("questionr")) {
-  install.packages("questionr")
-  library("questionr")
 }
 if (!require("scales")) {
   install.packages("scales")
   library("scales")
 }
-if (!require("stringr")) {
-  install.packages("stringr")
-  library("stringr")
-}
+
 
 ## Create table with the summary of statistics(jumps, duration timeSpent) for all data set
 tableOfStatsAll <- function(resStatsAll, stats) {
