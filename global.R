@@ -1,8 +1,71 @@
-library(cfda)
+if (!require("shiny")) {
+  install.packages("shiny")
+  library("shiny")
+}
+if (!require("shinydashboard")) {
+  install.packages("shinydashboard")
+  library("shinydashboard")
+}
+if (!require("shinyMatrix")) {
+  install.packages("shinyMatrix")
+  library("shinyMatrix")
+}
+if (!require("shinyWidgets")) {
+  install.packages("shinyWidgets")
+  library("shinyWidgets")
+}
+if (!require("shinycssloaders")) {
+  install.packages("shinycssloaders")
+  library("shinycssloaders")
+}
+if (!require("dashboardthemes")) {
+  install.packages("dashboardthemes")
+  library("dashboardthemes")
+}
+if (!require("DT")) {
+  install.packages("DT")
+  library("DT")
+}
+if (!require("plotly")) {
+  install.packages("plotly")
+  library("plotly")
+}
+if (!require("cfda")) {
+  install.packages("cfda")
+  library("cfda")
+}
+if (!require("tidyverse")) {
+  install.packages("tidyverse")
+  library("tidyverse")
+}
+if (!require("tractor.base")) {
+  install.packages("tractor.base")
+  library("tractor.base")
+}
+if (!require("dplyr")) {
+  install.packages("dplyr")
+  library("dplyr")
+}
+if (!require("ggpubr")) {
+  install.packages("ggpubr")
+  library("ggpubr")
+}
+if (!require("questionr")) {
+  install.packages("questionr")
+  library("questionr")
+}
+if (!require("scales")) {
+  install.packages("scales")
+  library("scales")
+}
+if (!require("stringr")) {
+  install.packages("stringr")
+  library("stringr")
+}
 
-##Create table with the summary of statistics(jumps, duration timeSpent) for all data set 
-tableOfStatsAll<- function(resStatsAll,stats){
-  if(stats %in% c("jump","duration")){
+## Create table with the summary of statistics(jumps, duration timeSpent) for all data set
+tableOfStatsAll <- function(resStatsAll, stats) {
+  if (stats %in% c("jump", "duration")) {
     q <- quantile(resStatsAll, seq(0, 1, 0.25))
     d <- data.frame(
       Mean = round(mean(resStatsAll), 2),
@@ -15,10 +78,10 @@ tableOfStatsAll<- function(resStatsAll,stats){
     )
     row.names(d) <- c("All")
     return(d)
-  }else if(stats=="time"){
+  } else if (stats == "time") {
     d <- as.data.frame(matrix(ncol = 8, nrow = 0))
     colnames(d) <- c("Mean", "Median", "Q1", "Q3", "Min", "Max", "Sd")
-    mod = colnames(resStatsAll)
+    mod <- colnames(resStatsAll)
     for (i in mod) {
       time <- resStatsAll[, i]
       q <- quantile(time)
@@ -30,24 +93,23 @@ tableOfStatsAll<- function(resStatsAll,stats){
         Min = round(q[1], 2),
         Max = round(q[5], 2),
         Sd = round(sd(time), 2)
-      )
-      )
+      ))
     }
     row.names(d) <- mod
     return(d)
   }
 }
 
-##Create table with the summary of statistics(jumps, duration timeSpent) by group variable 
-tableOfStatsByGroup<- function(data,resStatsAll,stats,groupVar,modalites,nomState){
-  if(stats %in% c("jump","duration")){
+## Create table with the summary of statistics(jumps, duration timeSpent) by group variable
+tableOfStatsByGroup <- function(data, resStatsAll, stats, groupVar, modalites, nomState) {
+  if (stats %in% c("jump", "duration")) {
     d <- as.data.frame(matrix(ncol = 9, nrow = 0))
     colnames(d) <- c("Mean", "Median", "Q1", "Q3", "Min", "Max", "Sd", "Number")
-    for(i in modalites){
+    for (i in modalites) {
       data2 <- data[data[, groupVar] == i, ]
-      if(stats=="jump"){
-        res<-compute_number_jumps(data2[, c("id", "time", "state")])
-      }else{
+      if (stats == "jump") {
+        res <- compute_number_jumps(data2[, c("id", "time", "state")])
+      } else {
         res <- compute_duration(data2[, c("id", "time", "state")])
       }
       q <- quantile(res, seq(0, 1, 0.25))
@@ -80,11 +142,10 @@ tableOfStatsByGroup<- function(data,resStatsAll,stats,groupVar,modalites,nomStat
           Number = length(resStatsAll)
         )
       )
-    row.names(d) <- c(modalites,"All")
+    row.names(d) <- c(modalites, "All")
     d
     return(d)
-  }
-  else if(stats=="time"){
+  } else if (stats == "time") {
     d <- as.data.frame(matrix(ncol = 8, nrow = 0))
     for (i in modalites) {
       idToKeep <- unique(data[data[, groupVar] == i, "id"])
@@ -122,20 +183,19 @@ tableOfStatsByGroup<- function(data,resStatsAll,stats,groupVar,modalites,nomStat
     row.names(d) <- c(modalites, "All")
     return(d)
   }
-  
 }
 
-##Create table with the summary of statistics(jumps, duration timeSpent) by cluster
-tableOfStatsCluster<-function(data,resStatsAll,stats,class,nomState,nbClust){
-  if(stats %in% c("jump","duration")){
+## Create table with the summary of statistics(jumps, duration timeSpent) by cluster
+tableOfStatsCluster <- function(data, resStatsAll, stats, class, nomState, nbClust) {
+  if (stats %in% c("jump", "duration")) {
     d <- as.data.frame(matrix(ncol = 8, nrow = 0))
-    colnames(d) <-c("Mean", "Median", "Q1", "Q3", "Min", "Max", "Sd", "Number")
+    colnames(d) <- c("Mean", "Median", "Q1", "Q3", "Min", "Max", "Sd", "Number")
     for (i in c(1:nbClust)) {
       idToKeep <- names(class[class == i])
       data2 <- data[data$id %in% idToKeep, ]
-      if(stats=="jump"){
-        res<-compute_number_jumps(data2[, c("id", "time", "state")])
-      }else{
+      if (stats == "jump") {
+        res <- compute_number_jumps(data2[, c("id", "time", "state")])
+      } else {
         res <- compute_duration(data2[, c("id", "time", "state")])
       }
       q <- quantile(res, seq(0, 1, 0.25))
@@ -150,7 +210,6 @@ tableOfStatsCluster<-function(data,resStatsAll,stats,class,nomState,nbClust){
           Max = round(q[5], 2),
           Sd = round(sd(res), 2),
           Number = length(res)
-          
         )
       )
     }
@@ -169,10 +228,9 @@ tableOfStatsCluster<-function(data,resStatsAll,stats,class,nomState,nbClust){
         Number = length(res)
       )
     )
-    row.names(d) <- c(paste("Cluster",1:nbClust),"All")
+    row.names(d) <- c(paste("Cluster", 1:nbClust), "All")
     return(d)
-  }
-  else if(stats=="time"){
+  } else if (stats == "time") {
     d <- as.data.frame(matrix(ncol = 8, nrow = 0))
     for (i in c(1:nbClust)) {
       idToKeep <- names(class[class == i])
@@ -207,7 +265,7 @@ tableOfStatsCluster<-function(data,resStatsAll,stats,class,nomState,nbClust){
         Number = length(time)
       )
     )
-    row.names(d) <- c(paste("Cluster",1:nbClust),"All")
+    row.names(d) <- c(paste("Cluster", 1:nbClust), "All")
     return(d)
   }
 }
