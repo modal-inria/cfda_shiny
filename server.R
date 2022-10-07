@@ -1848,6 +1848,7 @@ shinyServer(function(input, output, session) {
   ## Description with qualitative group variable by clusters (Frequencies table)
   output$freqGroupVarFiniByCluster <- DT::renderDataTable(
     {
+      req(input$choixGroupVarClusterDesc)
       checkGroupVariable(data_used(), input$choixGroupVarClusterDesc)
 
       data <- data_with_group_var()
@@ -1881,6 +1882,7 @@ shinyServer(function(input, output, session) {
   ## Description with qualitative group variable by cluster (Proportions and profiles table)
   output$tableGroupVarFiniByCluster <- DT::renderDataTable(
     {
+      req(input$choixGroupVarClusterDesc)
       checkGroupVariable(data_used(), input$choixGroupVarClusterDesc)
 
       data <- data_with_group_var()
@@ -1924,6 +1926,7 @@ shinyServer(function(input, output, session) {
   output$numVarGroupCluster <- DT::renderDataTable(
     {
       req(input$nbclust)
+      req(input$choixGroupVarClusterDesc)
       checkGroupVariable(data_used(), input$choixGroupVarClusterDesc)
 
       data <- data_with_group_var()
