@@ -2,7 +2,29 @@
 ## (for the plot and the table by group in descriptive statistics and estimation of markov chain parts)
 MAXMOD <- 12
 
+
 shinyServer(function(input, output, session) {
+
+  # check that the number of modality does neot exceed the limit
+  checkNumberOfModality <- function(nModality, maxNModality = MAXMOD) {
+    validate(
+      need(
+        nModality <= maxNModality,
+        paste0("This variable has too many modalities (", nModality, "), the limit is ", maxNModality, ".")
+      )
+    )
+  }
+
+  # check that the selected group variable has not more than 1 modality per individual
+  checkGroupVariable <- function(data, groupVariableName) {
+    validate(
+      need(
+        nrow(unique(data[, c("id", groupVariableName)])) == length(unique(data$id)),
+        "This variable can't be used as group variable because some individuals has more than 1 modality for this variable."
+      )
+    )
+  }
+
   ###################
   # 1. Import data ##
   ###################
@@ -35,16 +57,14 @@ shinyServer(function(input, output, session) {
 
   ## filter data set
   data_used <- reactive({
-    if (sum(colnames(data_import()) %in% "id") != 1 | sum(colnames(data_import()) %in% "time") != 1 | sum(colnames(data_import()) %in% "state") != 1) {
+    if ((sum(colnames(data_import()) %in% "id") != 1) | (sum(colnames(data_import()) %in% "time") != 1) | (
+      sum(colnames(data_import()) %in% "state") != 1)) {
       validate("Error! data must have exactly one column named 'id', one column named 'state' and one column name 'time'")
     }
-    validate(
-      need(is.numeric(data_import()[, "time"]), "time must be numeric, please choose correct decimal symbol")
-    )
+    validate(need(is.numeric(data_import()[, "time"]), "time must be numeric, please choose correct decimal symbol"))
     data <- data_import()
     input$applyMod
     isolate({
-
       ## Filter by length trajectories
       if (input$filterChoiceLength == "2") {
         minT <- data %>%
@@ -142,19 +162,8 @@ shinyServer(function(input, output, session) {
   ## filter widget for number of jumps
   output$jumpInt <- renderUI({
     tagList(
-      numericInput(
-        "more",
-        "Indiduals with more than ",
-        min = 0,
-        value = 0
-      ),
-      numericInput(
-        "less",
-        "and less than",
-        min = 0,
-        value = max(nJump_import()),
-        max = max(nJump_import())
-      )
+      numericInput("more", "Indiduals with more than ", min = 0, value = 0),
+      numericInput("less", "and less than", min = 0, value = max(nJump_import()), max = max(nJump_import()))
     )
   })
 
@@ -191,9 +200,7 @@ shinyServer(function(input, output, session) {
 
   ## Plot of trajectories
   plotOfData <- reactive({
-    validate(
-      need(is.numeric(data_used()[, "time"]), "time must be numeric, please choose correct decimal symbol")
-    )
+    validate(need(is.numeric(data_used()[, "time"]), "time must be numeric, please choose correct decimal symbol"))
 
     ## Progress bar
     withProgress(
@@ -202,25 +209,21 @@ shinyServer(function(input, output, session) {
       value = 0,
       {
         incProgress(1 / 4)
-        p <- plotData(data_used()[, c("id", "time", "state")],
-          addId = FALSE, addBorder =
-            FALSE, col = eval(parse(text = colorOfState()))
+        p <- plotData(
+          data_used()[, c("id", "time", "state")],
+          addId = FALSE,
+          addBorder = FALSE,
+          col = eval(parse(text = colorOfState()))
         ) + labs(title = "Trajectories of the Markov process")
+
         input$modPlotData
         isolate({
           if (input$choixParaGroupeVisualize == "All") {
             class <- NULL
           } else {
-            validate(need(
-              length(listGroupVar()) > 0,
-              "this file doesn't have group variable"
-            ))
-            validate(
-              need(
-                nrow(unique(data_used()[, c("id", input$groupVariableVisualize)])) == length(unique(data_used()$id)),
-                "this variable can't be used as group variable because some individuals has more than 1 modality for this variable"
-              )
-            )
+            validate(need(length(listGroupVar()) > 0, "this file doesn't have group variable"))
+            checkGroupVariable(data_used(), input$groupVariableVisualize)
+
             r <- unique(data_used()[, c("id", input$groupVariableVisualize)])
             class <- r[, input$groupVariableVisualize]
           }
@@ -268,9 +271,7 @@ shinyServer(function(input, output, session) {
 
   ## Duration of trajectories for the filter data set (or the initial data set if user doesn't apply a filter)
   duration <- reactive({
-    validate(
-      need(is.numeric(data_used()[, "time"]), "time must be numeric, please choose correct decimal symbol")
-    )
+    validate(need(is.numeric(data_used()[, "time"]), "time must be numeric, please choose correct decimal symbol"))
     duration <- compute_duration(data_used()[, c("id", "time", "state")])
   })
 
@@ -294,10 +295,7 @@ shinyServer(function(input, output, session) {
 
   ## Widget for the list of group variable (option by group variable)
   output$groupVarStatistics <- renderUI({
-    selectizeInput("groupVariableStatistics",
-      "Select a group variable",
-      choice = c(listGroupVar())
-    )
+    selectizeInput("groupVariableStatistics", "Select a group variable", choice = c(listGroupVar()))
   })
 
   ################################################
@@ -398,18 +396,10 @@ shinyServer(function(input, output, session) {
   ## summary of data set by group (Create the outputs results)
   observe({
     req(input$groupVariableStatistics)
-    validate(
-      need(
-        nrow(unique(data_used()[, c("id", input$groupVariableStatistics)])) == length(unique(data_used()$id)),
-        "this variable can't be used as group variable because some individuals has more than 1 modality for this variable"
-      )
-    )
+    checkGroupVariable(data_used(), input$groupVariableStatistics)
     mod <- unique(data_used()[, c(input$groupVariableStatistics)])
-    validate(
-      need(
-        length(mod) <= MAXMOD, paste("this variable has too many modalities (", length(mod), "), the limit is", MAXMOD)
-      )
-    )
+    checkNumberOfModality(length(mod))
+
     lapply(mod, function(par) {
       withProgress(
         message = "Making plots",
@@ -434,22 +424,10 @@ shinyServer(function(input, output, session) {
   ## Create outputs for the summary of data set by group
   output$summaryGp <- renderUI({
     req(input$groupVariableStatistics)
-    validate(
-      need(
-        nrow(unique(data_used()[, c("id", input$groupVariableStatistics)])) == length(unique(data_used()$id)),
-        "this variable can't be used as group variable because some individuals has more than 1 modality for this variable"
-      )
-    )
+      checkGroupVariable(data_used(), input$groupVariableStatistics)
     mod <- sort(unique(data_used()[, c(input$groupVariableStatistics)]))
-    validate(need(
-      length(mod) <= MAXMOD,
-      paste(
-        "this variable has too many modalities (",
-        length(mod),
-        "), the limit is",
-        MAXMOD
-      )
-    ))
+    checkNumberOfModality(length(mod))
+
     summary_output_list <- lapply(mod, function(par) {
       plotname <- paste("summary", par, sep = "_")
       column(
@@ -467,22 +445,10 @@ shinyServer(function(input, output, session) {
   output$summaryStatsByGroup <- DT::renderDataTable(
     {
       req(input$groupVariableStatistics)
-      validate(
-        need(
-          nrow(unique(data_used()[, c("id", input$groupVariableStatistics)])) == length(unique(data_used()$id)),
-          "this variable can't be used as group variable because some individuals has more than 1 modality for this variable"
-        )
-      )
+      checkGroupVariable(data_used(), input$groupVariableStatistics)
       mod <- sort(unique(data_used()[, c(input$groupVariableStatistics)]))
-      validate(need(
-        length(mod) <= MAXMOD,
-        paste(
-          "this variable has too many modalities (",
-          length(mod),
-          "), the limit is",
-          MAXMOD
-        )
-      ))
+      checkNumberOfModality(length(mod))
+
       if (input$choixGraphiqueStats == "duration") {
         tableOfStatsByGroup(data_used(), duration(), "duration", input$groupVariableStatistics, mod)
       } else if (input$choixGraphiqueStats == "jump") {
@@ -502,34 +468,13 @@ shinyServer(function(input, output, session) {
   ## Plots of duration by group
   output$durationGp <- renderPlotly({
     req(input$groupVariableStatistics)
-    validate(
-      need(
-        nrow(unique(data_used()[, c("id", input$groupVariableStatistics)])) == length(unique(data_used()$id)),
-        "this variable can't be used as group variable because some individuals has more than 1 modality for this variable"
-      )
-    )
+    checkGroupVariable(data_used(), input$groupVariableStatistics)
     mod <- sort(unique(data_used()[, c(input$groupVariableStatistics)]))
-    validate(need(
-      length(mod) <= MAXMOD,
-      paste(
-        "this variable has too many modalities (",
-        length(mod),
-        "), the limit is",
-        MAXMOD
-      )
-    ))
-    d <-
-      cbind.data.frame(
-        duration = as.vector(duration()),
-        id = names(duration())
-      )
-    dure_gp <-
-      unique(merge(d, data_used()[, c("id", input$groupVariableStatistics)],
-        by =
-          "id"
-      ))
-    g <-
-      ggplot(data.frame(dure_gp), aes_string(x = "duration")) +
+    checkNumberOfModality(length(mod))
+
+    d <- cbind.data.frame(duration = as.vector(duration()), id = names(duration()))
+    dure_gp <- unique(merge(d, data_used()[, c("id", input$groupVariableStatistics)], by = "id"))
+    g <- ggplot(data.frame(dure_gp), aes_string(x = "duration")) +
       labs(x = "Duration", y = "Frequency", title = paste("Duration of trajectories by", input$groupVariableStatistics)) +
       geom_histogram(
         fill = "lightblue",
@@ -544,31 +489,13 @@ shinyServer(function(input, output, session) {
   ## Plots of number of jumps by group
   output$jumpGp <- renderPlotly({
     req(input$groupVariableStatistics)
-    validate(
-      need(
-        nrow(unique(data_used()[, c("id", input$groupVariableStatistics)])) == length(unique(data_used()$id)),
-        "this variable can't be used as group variable because some individuals has more than 1 modality for this variable"
-      )
-    )
-
+    checkGroupVariable(data_used(), input$groupVariableStatistics)
     mod <- sort(unique(data_used()[, c(input$groupVariableStatistics)]))
-    validate(need(
-      length(mod) <= MAXMOD,
-      paste(
-        "this variable has too many modalities (",
-        length(mod),
-        "), the limit is",
-        MAXMOD
-      )
-    ))
+    checkNumberOfModality(length(mod))
+
     d <- cbind.data.frame(jump = as.vector(nJump()), id = names(nJump()))
-    jump_gp <-
-      unique(merge(d, data_used()[, c("id", input$groupVariableStatistics)],
-        by =
-          "id"
-      ))
-    g <-
-      ggplot(data.frame(jump_gp), aes_string(x = "jump")) +
+    jump_gp <- unique(merge(d, data_used()[, c("id", input$groupVariableStatistics)], by = "id"))
+    g <- ggplot(data.frame(jump_gp), aes_string(x = "jump")) +
       labs(x = "Number of jump", y = "Frequency", title = paste("Number of jumps by", input$groupVariableStatistics)) +
       geom_bar(fill = "lightblue", color = "black") +
       facet_wrap(input$groupVariableStatistics)
@@ -579,33 +506,17 @@ shinyServer(function(input, output, session) {
   output$nJumpTableGroupFreq <- DT::renderDataTable(
     {
       req(input$groupVariableStatistics)
-      validate(
-        need(
-          nrow(unique(data_used()[, c("id", input$groupVariableStatistics)])) == length(unique(data_used()$id)),
-          "this variable can't be used as group variable because some individuals has more than 1 modality for this variable"
-        )
-      )
+      checkGroupVariable(data_used(), input$groupVariableStatistics)
       mod <- unique(data_used()[, input$groupVariableStatistics])
-      validate(need(
-        length(mod) <= MAXMOD,
-        paste(
-          "this variable has too many modalities (",
-          length(mod),
-          "), the limit is",
-          MAXMOD
-        )
-      ))
+      checkNumberOfModality(length(mod))
 
       jump <- data.frame(id = names(nJump()), jump = as.vector(nJump()))
-      group <-
-        unique(data_used()[, c("id", input$groupVariableStatistics)])
+      group <- unique(data_used()[, c("id", input$groupVariableStatistics)])
       jumpMerge <- merge(jump, group, by = "id")
-      t <-
-        as.data.frame.matrix(table(jumpMerge[, input$groupVariableStatistics], jumpMerge$jump))
+      t <- as.data.frame.matrix(table(jumpMerge[, input$groupVariableStatistics], jumpMerge$jump))
       row_som <- apply(t, 1, sum)
       col_som <- apply(t, 2, sum)
-      res <-
-        rbind.data.frame(cbind.data.frame(t, total = row_som), total = c(col_som, sum(col_som)))
+      res <- rbind.data.frame(cbind.data.frame(t, total = row_som), total = c(col_som, sum(col_som)))
 
       res
     },
@@ -623,43 +534,25 @@ shinyServer(function(input, output, session) {
   output$nJumpTableGroupTable <- DT::renderDataTable(
     {
       req(input$groupVariableStatistics)
-      validate(
-        need(
-          nrow(unique(data_used()[, c("id", input$groupVariableStatistics)])) == length(unique(data_used()$id)),
-          "this variable can't be used as group variable because some individuals has more than 1 modality for this variable"
-        )
-      )
+      checkGroupVariable(data_used(), input$groupVariableStatistics)
       mod <- unique(data_used()[, input$groupVariableStatistics])
-      validate(need(
-        length(mod) <= MAXMOD,
-        paste(
-          "this variable has too many modalities (",
-          length(mod),
-          "), the limit is",
-          MAXMOD
-        )
-      ))
+      checkNumberOfModality(length(mod))
+
       jump <- data.frame(id = names(nJump()), jump = as.vector(nJump()))
-      group <-
-        unique(data_used()[, c("id", input$groupVariableStatistics)])
+      group <- unique(data_used()[, c("id", input$groupVariableStatistics)])
       jumpMerge <- merge(jump, group, by = "id")
-      t <-
-        table(jumpMerge[, input$groupVariableStatistics], jumpMerge$jump)
+      t <- table(jumpMerge[, input$groupVariableStatistics], jumpMerge$jump)
       if (input$tableChoiceGroupDesc == "prop") {
         t <- as.data.frame.matrix(prop.table(t))
         row_som <- apply(t, 1, sum)
         col_som <- apply(t, 2, sum)
-        res <-
-          rbind.data.frame(cbind.data.frame(t, total = row_som),
-            total = c(col_som, sum(col_som))
-          )
+        res <- rbind.data.frame(cbind.data.frame(t, total = row_som), total = c(col_som, sum(col_som)))
         res <- round(res, 4) * 100
       } else if (input$tableChoiceGroupDesc == "row") {
         res <- as.data.frame.matrix(round(lprop(t), 2))
       } else {
         res <- as.data.frame.matrix(round(cprop(t), 2))
       }
-
 
       res
     },
@@ -676,33 +569,18 @@ shinyServer(function(input, output, session) {
   ## Plots of time spent by group
   output$timeStateGp <- renderPlotly({
     req(input$groupVariableStatistics)
-    validate(
-      need(
-        nrow(unique(data_used()[, c("id", input$groupVariableStatistics)])) == length(unique(data_used()$id)),
-        "this variable can't be used as group variable because some individuals has more than 1 modality for this variable"
-      )
-    )
+    checkGroupVariable(data_used(), input$groupVariableStatistics)
     mod <- sort(unique(data_used()[, c(input$groupVariableStatistics)]))
-    validate(need(
-      length(mod) <= MAXMOD,
-      paste(
-        "this variable has too many modalities (",
-        length(mod),
-        "), the limit is",
-        MAXMOD
-      )
-    ))
+    checkNumberOfModality(length(mod))
+
     x <- time_spent()
-    df <-
-      data.frame(
-        timeSpent = as.vector(x),
-        state = factor(rep(colnames(x), each = nrow(x)), levels = colnames(x)),
-        id = as.vector(rownames(x))
-      )
-    data <-
-      unique(merge(df, data_used()[, c("id", input$groupVariableStatistics)], by = "id"))
-    p <-
-      ggplot(data, aes_string(x = "state", y = "timeSpent", fill = "state")) +
+    df <- data.frame(
+      timeSpent = as.vector(x),
+      state = factor(rep(colnames(x), each = nrow(x)), levels = colnames(x)),
+      id = as.vector(rownames(x))
+    )
+    data <- unique(merge(df, data_used()[, c("id", input$groupVariableStatistics)], by = "id"))
+    p <- ggplot(data, aes_string(x = "state", y = "timeSpent", fill = "state")) +
       geom_boxplot() +
       labs(
         x = "State", y = "Time Spent", fill = "State",
@@ -716,29 +594,17 @@ shinyServer(function(input, output, session) {
   ## summary of Time spent by state by group (create outputs)
   observe({
     req(input$groupVariableStatistics)
-    validate(
-      need(
-        nrow(unique(data_used()[, c("id", input$groupVariableStatistics)])) == length(unique(data_used()$id)),
-        "this variable can't be used as group variable because some individuals has more than 1 modality for this variable"
-      )
-    )
     data <- data_used()
+
+    checkGroupVariable(data, input$groupVariableStatistics)
     mod <- unique(data[, "state"])
-    validate(need(
-      length(unique(data[, input$groupVariableStatistics])) <= MAXMOD,
-      paste(
-        "this variable has too many modalities (",
-        length(mod),
-        "), the limit is",
-        MAXMOD
-      )
-    ))
+    checkNumberOfModality(length(unique(data[, input$groupVariableStatistics])))
+
     timeSpent <- time_spent()
     gp <- unique(data[, input$groupVariableStatistics])
     lapply(mod, function(par) {
       output[[paste("timeSpentGroup", par, sep = "_")]] <-
-        DT::renderDataTable(
-          {
+        DT::renderDataTable({
             tableOfStatsByGroup(data, time_spent(), "time", input$groupVariableStatistics, gp, par)
           },
           extensions = c("FixedColumns", "Buttons"),
@@ -758,22 +624,10 @@ shinyServer(function(input, output, session) {
   ## create widget for the summary of time spent in each state by group
   output$timeSpentTableGp <- renderUI({
     req(input$groupVariableStatistics)
-    validate(
-      need(
-        nrow(unique(data_used()[, c("id", input$groupVariableStatistics)])) == length(unique(data_used()$id)),
-        "this variable can't be used as group variable because some individuals has more than 1 modality for this variable"
-      )
-    )
+    checkGroupVariable(data_used(), input$groupVariableStatistics)
     mod <- unique(data_used()[, input$groupVariableStatistics])
-    validate(need(
-      length(mod) <= MAXMOD,
-      paste(
-        "this variable has too many modalities (",
-        length(mod),
-        "), the limit is",
-        MAXMOD
-      )
-    ))
+    checkNumberOfModality(length(mod))
+
     mod <- colnames(time_spent())
     summary_output_list <- lapply(mod, function(par) {
       plotname <- paste("timeSpentGroup", par, sep = "_")
@@ -795,10 +649,7 @@ shinyServer(function(input, output, session) {
 
   ## widget with the other variables of data set (option by group variable)
   output$groupVarMarkov <- renderUI({
-    selectizeInput("groupVariableMarkov",
-      "Select a group variable",
-      choice = c(listGroupVar())
-    )
+    selectizeInput("groupVariableMarkov", "Select a group variable", choice = c(listGroupVar()))
   })
 
   ##########
@@ -807,10 +658,12 @@ shinyServer(function(input, output, session) {
 
   ## Compute the estimation of the Markov chain
   estimateMarkovAll <- reactive({
-    validate(need(
-      is.numeric(data_used()[, "time"]),
-      "time must be numeric, please choose correct decimal symbol"
-    ), )
+    validate(
+      need(
+        is.numeric(data_used()[, "time"]),
+        "time must be numeric, please choose correct decimal symbol"
+      )
+    )
     withProgress(
       message = "Making transition graph",
       detail = "Please wait until the end",
@@ -863,17 +716,10 @@ shinyServer(function(input, output, session) {
   ## Create outputs of markov chain, transition matrix, exponential law, ect
   observe({
     req(input$groupVariableMarkov)
-    validate(
-      need(
-        nrow(unique(data_used()[, c("id", input$groupVariableMarkov)])) == length(unique(data_used()$id)),
-        "this variable can't be used as group variable because some individuals has more than 1 modality for this variable"
-      )
-    )
+    checkGroupVariable(data_used(), input$groupVariableMarkov)
     mod <- unique(data_used()[, c(input$groupVariableMarkov)])
-    validate(need(
-      length(mod) <= MAXMOD,
-      paste("this variable has too many modalities (", length(mod), "), the limit is", MAXMOD)
-    ))
+    checkNumberOfModality(length(mod))
+
     lapply(mod, function(par) {
       withProgress(
         message = "Making plots",
@@ -913,30 +759,18 @@ shinyServer(function(input, output, session) {
   ## Transition graph by group
   output$transGraphByGroup <- renderUI({
     req(input$groupVariableMarkov)
-    validate(
-      need(
-        nrow(unique(data_used()[, c("id", input$groupVariableMarkov)])) == length(unique(data_used()$id)),
-        "this variable can't be used as group variable because some individuals has more than 1 modality for this variable"
-      )
-    )
+    checkGroupVariable(data_used(), input$groupVariableMarkov)
     mod <- sort(unique(data_used()[, c(input$groupVariableMarkov)]))
-    validate(need(
-      length(mod) <= MAXMOD,
-      paste(
-        "this variable has too many modalities (",
-        length(mod),
-        "), the limit is",
-        MAXMOD
-      )
-    ))
+    checkNumberOfModality(length(mod))
+
     plot_output_list <- lapply(mod, function(par) {
       plotname <- paste("graphTransition", par, sep = "_")
-      nInd <-
-        unique(data_used()[data_used()[, input$groupVariableMarkov] == par, c("id", input$groupVariableMarkov)])
+      nInd <- unique(data_used()[data_used()[, input$groupVariableMarkov] == par, c("id", input$groupVariableMarkov)])
       column(6, box(
         width = 12, title = paste("Group: ", par, "(n:", nrow(nInd), ")"),
         status = "danger", solidHeader = TRUE,
-        shinycssloaders::withSpinner(plotOutput(plotname),
+        shinycssloaders::withSpinner(
+          plotOutput(plotname),
           type = getOption("spinner.type", default = 6),
           color = getOption("spinner.color", default = "#d73925")
         )
@@ -948,26 +782,13 @@ shinyServer(function(input, output, session) {
   ## Transition matrix by group
   output$transMatByGroup <- renderUI({
     req(input$groupVariableMarkov)
-    validate(
-      need(
-        nrow(unique(data_used()[, c("id", input$groupVariableMarkov)])) == length(unique(data_used()$id)),
-        "this variable can't be used as group variable because some individuals has more than 1 modality for this variable"
-      )
-    )
+    checkGroupVariable(data_used(), input$groupVariableMarkov)
     mod <- sort(unique(data_used()[, c(input$groupVariableMarkov)]))
-    validate(need(
-      length(mod) <= MAXMOD,
-      paste(
-        "this variable has too many modalities (",
-        length(mod),
-        "), the limit is",
-        MAXMOD
-      )
-    ))
+    checkNumberOfModality(length(mod))
+
     plot_output_list <- lapply(mod, function(par) {
       plotname <- paste("matTransition", par, sep = "_")
-      nInd <-
-        unique(data_used()[data_used()[, input$groupVariableMarkov] == par, c("id", input$groupVariableMarkov)])
+      nInd <- unique(data_used()[data_used()[, input$groupVariableMarkov] == par, c("id", input$groupVariableMarkov)])
       column(6, box(
         width = 12, title = paste("Group: ", par, "(n:", nrow(nInd), ")"),
         status = "danger", solidHeader = TRUE,
@@ -981,22 +802,9 @@ shinyServer(function(input, output, session) {
   ## Number jump state by group
   output$njumpMarkovByGroup <- renderUI({
     req(input$groupVariableMarkov)
-    validate(
-      need(
-        nrow(unique(data_used()[, c("id", input$groupVariableMarkov)])) == length(unique(data_used()$id)),
-        "this variable can't be used as group variable because some individuals has more than 1 modality for this variable"
-      )
-    )
+    checkGroupVariable(data_used(), input$groupVariableMarkov)
     mod <- sort(unique(data_used()[, c(input$groupVariableMarkov)]))
-    validate(need(
-      length(mod) <= MAXMOD,
-      paste(
-        "this variable has too many modalities (",
-        length(mod),
-        "), the limit is",
-        MAXMOD
-      )
-    ))
+    checkNumberOfModality(length(mod))
 
     plot_output_list <- lapply(mod, function(par) {
       plotname <- paste("nJumpMat", par, sep = "_")
@@ -1014,22 +822,10 @@ shinyServer(function(input, output, session) {
   ## probability state to be in a state by group
   output$probaStateByGroup <- renderPlotly({
     req(input$groupVariableMarkov)
-    validate(
-      need(
-        nrow(unique(data_used()[, c("id", input$groupVariableMarkov)])) == length(unique(data_used()$id)),
-        "this variable can't be used as group variable because some individuals has more than 1 modality for this variable"
-      )
-    )
+    checkGroupVariable(data_used(), input$groupVariableMarkov)
     mod <- sort(unique(data_used()[, c(input$groupVariableMarkov)]))
-    validate(need(
-      length(mod) <= MAXMOD,
-      paste(
-        "this variable has too many modalities (",
-        length(mod),
-        "), the limit is",
-        MAXMOD
-      )
-    ))
+    checkNumberOfModality(length(mod))
+
     d <- data.frame(matrix(ncol = 4, nrow = 0))
     for (par in mod) {
       pt <-
@@ -1046,16 +842,7 @@ shinyServer(function(input, output, session) {
     }
 
     colnames(d) <- c("State", "proba", "time", "groupe")
-    p <-
-      ggplot(
-        d,
-        aes_string(
-          x = "time",
-          y = "proba",
-          group = "State",
-          colour = "State"
-        )
-      ) +
+    p <- ggplot(d, aes_string(x = "time", y = "proba", group = "State", colour = "State")) +
       geom_line() +
       ylim(0, 1) +
       labs(x = "Time", y = "p(t)", title = "P(X(t) = x)") +
@@ -1067,12 +854,8 @@ shinyServer(function(input, output, session) {
   ## exponential law of sojourn time by group
   output$expoLawMarkovByGroup <- renderUI({
     req(input$groupVariableMarkov)
-    validate(
-      need(
-        nrow(unique(data_used()[, c("id", input$groupVariableMarkov)])) == length(unique(data_used()$id)),
-        "this variable can't be used as group variable because some individuals has more than 1 modality for this variable"
-      )
-    )
+    checkGroupVariable(data_used(), input$groupVariableMarkov)
+
     mod <- sort(unique(data_used()[, c(input$groupVariableMarkov)]))
     plot_output_list <- lapply(mod, function(par) {
       plotname <- paste("expoLaw", par, sep = "_")
@@ -1122,7 +905,6 @@ shinyServer(function(input, output, session) {
     if (length(stateCFDA) > length(stateOrigin)) {
       nonObState <- stateCFDA[!(stateCFDA %in% stateOrigin)]
       color <- substr(colorOfState(), 3, nchar(colorOfState()) - 1)
-      paste0("c(", color, ",", '"', nonObState, '"', "=", '"', "#565656", '")')
       r <- eval(parse(text = paste0("c(", color, ",", '"', nonObState, '"', "=", '"', "#565656", '")')))
       r[order(names(r))]
     } else {
@@ -1140,14 +922,8 @@ shinyServer(function(input, output, session) {
       minT <- resume$timeRange[1]
       maxT <- resume$timeRange[2]
       validate(
-        need(
-          resume$uniqueStart,
-          "All individuals must have the same time start value"
-        ),
-        need(
-          tmax >= minT,
-          paste("End time must be greater than", minT)
-        )
+        need(resume$uniqueStart, "All individuals must have the same time start value"),
+        need(tmax >= minT, paste("End time must be greater than", minT))
       )
       d <- cut_data(
         data_used()[, c("id", "time", "state")],
@@ -1159,7 +935,7 @@ shinyServer(function(input, output, session) {
     })
   })
 
-  ## Plot oj trajectories of the cut data
+  ## Plot of trajectories of the cut data
   output$plotDataCFDA <- renderPlot({
     plotData(data_CFDA(), addId = FALSE, addBorder = FALSE, col = color_data_CFDA())
   })
@@ -1197,7 +973,7 @@ shinyServer(function(input, output, session) {
             need(resume$uniqueStart, "All individuals must have the same time start value"),
             need(
               summary_cfd(data_CFDA())$nInd > 1,
-              "There is only one row or less with this End time please change the value"
+              "There is only one row or less with this end time please change the value"
             ),
             need(tmax >= minT, paste("End time must be greater than", minT))
           )
@@ -1233,7 +1009,7 @@ shinyServer(function(input, output, session) {
         2
       )
     )
-    rownames(vp) <- paste("Dim", 1:length(fmca()$eigenvalues[vpselection]))
+    rownames(vp) <- paste("Dim", seq_len(length(fmca()$eigenvalues[vpselection])))
     vp
   })
 
@@ -1249,7 +1025,7 @@ shinyServer(function(input, output, session) {
     validate(
       need(
         summary_cfd(data_CFDA())$nInd > 1,
-        "There is only one row or less with this End time please change the value"
+        "There is only one row or less with this end time please change the value"
       ),
       need(
         tmax >= min,
@@ -1258,20 +1034,20 @@ shinyServer(function(input, output, session) {
     )
     if (input$cumulative) {
       g <-
-        ggplot(cbind.data.frame(x = 1:nrow(eigenvalues()), y = eigenvalues()[, 3])) +
+        ggplot(cbind.data.frame(x = seq_len(nrow(eigenvalues())), y = eigenvalues()[, 3])) +
         ggtitle("Cumulative eigenvalues plot") +
         theme(plot.title = element_text(hjust = 0.5)) +
-        scale_x_continuous(breaks = 1:nrow(eigenvalues())) +
+        scale_x_continuous(breaks = seq_len(nrow(eigenvalues()))) +
         geom_col(fill = "blue") +
         aes(x = x, y = y) +
         xlab("Component") +
         ylab("Percentage of variance")
     } else {
       g <-
-        ggplot(cbind.data.frame(x = 1:nrow(eigenvalues()), y = eigenvalues()[, 2])) +
+        ggplot(cbind.data.frame(x = seq_len(nrow(eigenvalues())), y = eigenvalues()[, 2])) +
         ggtitle("Eigenvalues plot") +
         theme(plot.title = element_text(hjust = 0.5)) +
-        scale_x_continuous(breaks = 1:nrow(eigenvalues())) +
+        scale_x_continuous(breaks = seq_len(nrow(eigenvalues()))) +
         geom_col(fill = "blue") +
         aes(x = x, y = y) +
         xlab("Component") +
@@ -1321,7 +1097,8 @@ shinyServer(function(input, output, session) {
       group <- unique(data_used()[data_used()$id %in% row.names(fmca()$pc), c("id", input$groupVariableFactorialPlan)])
       validate(need(nrow(group) == nrow(fmca()$pc), "can't be used as group variable"))
       p <- plotComponent(fmca(), comp = c(as.numeric(input$choix_dim1), as.numeric(input$choix_dim2)), addNames = FALSE)
-      if ((is.numeric(group[, input$groupVariableFactorialPlan]) | (is.integer(group[, input$groupVariableFactorialPlan]))) & length(unique(group[, input$groupVariableFactorialPlan])) > MAXMOD) {
+      if ((is.numeric(group[, input$groupVariableFactorialPlan]) | (is.integer(group[, input$groupVariableFactorialPlan]))
+        ) & length(unique(group[, input$groupVariableFactorialPlan])) > MAXMOD) {
         p <- p + geom_point(aes(color = group[, input$groupVariableFactorialPlan])) +
           labs(color = input$groupVariableFactorialPlan)
       } else {
@@ -1386,8 +1163,7 @@ shinyServer(function(input, output, session) {
   ## Widget to choose dimension for extreme individuals
   output$dim1Extrem <- renderUI({
     input$soumettre
-    maxi <-
-      isolate(input$nbasis * length(summary_cfd(data_CFDA()[, c("id", "state", "time")])$states))
+    maxi <- isolate(input$nbasis * length(summary_cfd(data_CFDA()[, c("id", "state", "time")])$states))
     selectInput(
       inputId = "choix_dim1Extrem",
       label = "Axis 1",
@@ -1400,8 +1176,7 @@ shinyServer(function(input, output, session) {
   ## Widget to choose dimension for extreme individuals
   output$dim2Extrem <- renderUI({
     input$soumettre
-    maxi <-
-      isolate(input$nbasis * length(summary_cfd(data_CFDA()[, c("id", "state", "time")])$states))
+    maxi <- isolate(input$nbasis * length(summary_cfd(data_CFDA()[, c("id", "state", "time")])$states))
     selectInput(
       inputId = "choix_dim2Extrem",
       label = "Axis 2 ",
@@ -1452,9 +1227,9 @@ shinyServer(function(input, output, session) {
     maxpc1 <- NULL
     maxpc2 <- NULL
     n <- nrow(fmca()$pc)
+
     ## Extreme on dim 1
-    dim1SortIncre <-
-      sort(fmca()$pc[, as.numeric(input$choix_dim1Extrem)])
+    dim1SortIncre <- sort(fmca()$pc[, as.numeric(input$choix_dim1Extrem)])
     dim1SortDecre <- sort(dim1SortIncre, decreasing = TRUE)
     if (input$extremComp1 > 0) {
       minpc1 <- names(dim1SortIncre[1:ceiling(n * input$extremComp1 / 100 / 2)])
@@ -1462,13 +1237,11 @@ shinyServer(function(input, output, session) {
     }
 
     ## Extreme on dim 2
-    dim2SortIncre <-
-      sort(fmca()$pc[, as.numeric(input$choix_dim2Extrem)])
+    dim2SortIncre <- sort(fmca()$pc[, as.numeric(input$choix_dim2Extrem)])
     dim2SortDecre <- sort(dim2SortIncre, decreasing = TRUE)
     if (input$extremComp2 > 0) {
       minpc2 <- names(dim2SortIncre[1:ceiling(n * input$extremComp2 / 100 / 2)])
-      maxpc2 <-
-        names(dim2SortDecre[1:ceiling(n * input$extremComp2 / 100 / 2)])
+      maxpc2 <- names(dim2SortDecre[1:ceiling(n * input$extremComp2 / 100 / 2)])
     }
     list(
       minpc1 = minpc1,
@@ -1482,8 +1255,7 @@ shinyServer(function(input, output, session) {
   output$planfactExtremeIndividuals <- renderPlotly({
     req(input$choix_dim2Extrem, input$choix_dim1Extrem)
     ids <- unique(data_CFDA()$id)
-    group <-
-      factor(
+    group <- factor(
         rep("Not extreme", length(ids)),
         levels = c(
           "Extreme on axis 2",
@@ -1496,19 +1268,17 @@ shinyServer(function(input, output, session) {
     group[ids %in% extremIndividuals()$maxpc1] <- "Extreme on axis 1"
     group[ids %in% extremIndividuals()$minpc2] <- "Extreme on axis 2"
     group[ids %in% extremIndividuals()$maxpc2] <- "Extreme on axis 2"
-    group[ids %in% intersect(extremIndividuals()$minpc1, extremIndividuals()$minpc2)] <-
-      "Extreme on both axis"
-    group[ids %in% intersect(extremIndividuals()$maxpc1, extremIndividuals()$maxpc2)] <-
-      "Extreme on both axis"
-    p <-
-      plotComponent(fmca(),
-        comp = c(
-          as.numeric(input$choix_dim1Extrem),
-          as.numeric(input$choix_dim2Extrem)
-        ),
-        addNames = FALSE
-      ) +
-      geom_point(aes(color = group)) + scale_color_manual(values = c("#000CFF", "#FF0000", "#000000", "#7000FF"))
+    group[ids %in% intersect(extremIndividuals()$minpc1, extremIndividuals()$minpc2)] <- "Extreme on both axis"
+    group[ids %in% intersect(extremIndividuals()$maxpc1, extremIndividuals()$maxpc2)] <- "Extreme on both axis"
+    p <- plotComponent(fmca(),
+      comp = c(
+         as.numeric(input$choix_dim1Extrem),
+         as.numeric(input$choix_dim2Extrem)
+       ),
+      addNames = FALSE
+    ) +
+      geom_point(aes(color = group)) +
+      scale_color_manual(values = c("#000CFF", "#FF0000", "#000000", "#7000FF"))
     p
   })
 
@@ -1517,10 +1287,7 @@ shinyServer(function(input, output, session) {
   plotDataExtremAxe1 <- reactive({
     validate(need(input$extremComp1 > 0, "No extreme individuals selected"))
     ids <- unique(data_CFDA()$id)
-    group <-
-      factor(rep(NA, length(ids)),
-        levels = c("Lowest component values", "Highest component values")
-      )
+    group <- factor(rep(NA, length(ids)), levels = c("Lowest component values", "Highest component values"))
     group[ids %in% extremIndividuals()$minpc1] <- "Lowest component values"
     group[ids %in% extremIndividuals()$maxpc1] <- "Highest component values"
     plotData(
@@ -1542,10 +1309,7 @@ shinyServer(function(input, output, session) {
   plotDataExtremAxe2 <- reactive({
     validate(need(input$choix_dim2Extrem > 0, "no extreme individuals selected"))
     ids <- unique(data_CFDA()$id)
-    group <-
-      factor(rep(NA, length(ids)),
-        levels = c("Lowest component values", "Highest component values")
-      )
+    group <- actor(rep(NA, length(ids)), levels = c("Lowest component values", "Highest component values"))
     group[ids %in% extremIndividuals()$minpc2] <- "Lowest component values"
     group[ids %in% extremIndividuals()$maxpc2] <- "Highest component values"
     plotData(
@@ -1599,8 +1363,7 @@ shinyServer(function(input, output, session) {
       paste("resFactorialAnalysis.RData")
     },
     content = function(file) {
-      results_factorial_analysis <-
-        list(dataUsed = data_used_CFDA(), optimal_encoding = fmca())
+      results_factorial_analysis <- list(dataUsed = data_used_CFDA(), optimal_encoding = fmca())
       save(results_factorial_analysis, file = file)
     }
   )
@@ -1619,13 +1382,11 @@ shinyServer(function(input, output, session) {
   })
 
   output$nJumpGraphByCluster <- renderPlotly({
-    jump_gp <-
-      cbind.data.frame(
-        jump = as.factor(as.vector(nJump_data_CFDA())), cluster =
-          class()
-      )
-    g <-
-      ggplot(data.frame(jump_gp), aes(x = jump)) +
+    jump_gp <- cbind.data.frame(
+       jump = as.factor(as.vector(nJump_data_CFDA())),
+       cluster = class()
+    )
+    g <- ggplot(data.frame(jump_gp), aes(x = jump)) +
       labs(x = "Number of jump", y = "Frequency") +
       geom_bar(fill = "lightblue", color = "black") +
       facet_wrap("cluster")
@@ -1645,8 +1406,7 @@ shinyServer(function(input, output, session) {
   ## widget to choose the number of component for clustering
   output$nb_comp <- renderUI({
     input$soumettre
-    maxi <-
-      isolate(input$nbasis * length(summary_cfd(data_CFDA()[, c("id", "state", "time")])$states))
+    maxi <- isolate(input$nbasis * length(summary_cfd(data_CFDA()[, c("id", "state", "time")])$states))
     selectInput(
       inputId = "nbcomp",
       label = "Number of components for clustering",
@@ -1667,9 +1427,7 @@ shinyServer(function(input, output, session) {
         if (input$percentageVariance == 100) {
           hclust(dist(fmca()$pc), method = input$method)
         } else {
-          ncomp <-
-            which(cumsum(prop.table(fmca()$eigenvalues)) >= input$percentageVariance /
-              100)[1]
+          ncomp <- which(cumsum(prop.table(fmca()$eigenvalues)) >= input$percentageVariance / 100)[1]
           hclust(dist(fmca()$pc[, 1:ncomp]), method = input$method)
         }
       }
@@ -1699,13 +1457,7 @@ shinyServer(function(input, output, session) {
 
   ## widget to choose the number of clusters
   output$clus <- renderUI({
-    numericInput(
-      "nbclust",
-      "Number of clusters",
-      min = 2,
-      max = max_cluster(),
-      value = 2
-    )
+    numericInput("nbclust", "Number of clusters", min = 2, max = max_cluster(), value = 2)
   })
 
   ## vector the the clusters
@@ -1864,7 +1616,6 @@ shinyServer(function(input, output, session) {
       tableOfStatsCluster(data_CFDA(), timeSpent, "time", class(), par, input$nbclust)
       plotname <- paste("timeSpentCluster", par, sep = "_")
 
-
       output[[paste("timeSpentCluster", par, sep = "_")]] <-
         DT::renderDataTable(
           {
@@ -1907,7 +1658,7 @@ shinyServer(function(input, output, session) {
       id = names(class()),
       res_class_cluster = as.vector(class())
     )
-    d2 <- cbind.data.frame(as.data.frame(timeSpent[, 1:ncol(timeSpent)]), id = row.names(timeSpent))
+    d2 <- cbind.data.frame(as.data.frame(timeSpent[, seq_len(ncol(timeSpent))]), id = row.names(timeSpent))
     d1 <- unique(merge(d2, class_id, by = "id"))
     mod <- colnames(timeSpent)
     lapply(mod, function(par) {
@@ -1938,7 +1689,8 @@ shinyServer(function(input, output, session) {
         12,
         box(
           width = 12, title = paste("State:", par), status = "danger", solidHeader = TRUE,
-          shinycssloaders::withSpinner(plotlyOutput(plotname),
+          shinycssloaders::withSpinner(
+            plotlyOutput(plotname),
             type = getOption("spinner.type", default = 6),
             color = getOption("spinner.color", default = "#d73925")
           )
@@ -1952,7 +1704,7 @@ shinyServer(function(input, output, session) {
   ## Creation of the output of Markov chain by clusters
   observe({
     req(input$nbclust)
-    lapply(c(1:input$nbclust), function(par) {
+    lapply(1:input$nbclust, function(par) {
       withProgress(
         message = "Making plots",
         detail = "Please wait until the end",
@@ -1969,18 +1721,9 @@ shinyServer(function(input, output, session) {
               r <- r[names(r) %in% colnames(mark$P)]
               plot(mark, box.col = r)
             })
-          output[[paste("matTransitionCluster", par, sep = "_")]] <-
-            renderPrint({
-              round(mark$P, 3)
-            })
-          output[[paste("nJumpMatCluster", par, sep = "_")]] <-
-            renderPrint({
-              statetable(data)
-            })
-          output[[paste("expoLawCluster", par, sep = "_")]] <-
-            renderPrint({
-              round(mark$lambda, 3)
-            })
+          output[[paste("matTransitionCluster", par, sep = "_")]] <- renderPrint(round(mark$P, 3))
+          output[[paste("nJumpMatCluster", par, sep = "_")]] <- renderPrint(statetable(data))
+          output[[paste("expoLawCluster", par, sep = "_")]] <- renderPrint(round(mark$lambda, 3))
         }
       )
     })
@@ -2009,7 +1752,8 @@ shinyServer(function(input, output, session) {
           4,
           box(
             width = 12, status = "danger", solidHeader = TRUE, title = paste("Group:", par, "(n:", t[par], ")"),
-            shinycssloaders::withSpinner(plotOutput(plotname),
+            shinycssloaders::withSpinner(
+              plotOutput(plotname),
               type = getOption("spinner.type", default = 6),
               color = getOption("spinner.color", default = "#d73925")
             )
@@ -2071,10 +1815,8 @@ shinyServer(function(input, output, session) {
         id = names(class()),
         res_class_cluster = as.vector(class())
       )
-      data <-
-        merge(data_CFDA()[data_CFDA()$id %in% class_id$id, ], class_id, by = "id")
-      restData <-
-        data_used()[data_used()$id %in% class_id$id, c("id", listGroupVar())]
+      data <- merge(data_CFDA()[data_CFDA()$id %in% class_id$id, ], class_id, by = "id")
+      restData <- data_used()[data_used()$id %in% class_id$id, c("id", listGroupVar())]
       dataClust <- unique(merge(data, restData, by = "id"))
       dataClust
     }
@@ -2099,22 +1841,15 @@ shinyServer(function(input, output, session) {
 
   ## Description of cluster by group variable
   output$groupVarDescCluster <- renderUI({
-    selectizeInput("choixGroupVarClusterDesc",
-      "Choose a variable",
-      choices = listGroupVar()
-    )
+    selectizeInput("choixGroupVarClusterDesc", "Choose a variable", choices = listGroupVar())
   })
 
 
   ## Description with qualitative group variable by clusters (Frequencies table)
   output$freqGroupVarFiniByCluster <- DT::renderDataTable(
     {
-      validate(
-        need(
-          nrow(unique(data_used()[, c("id", input$choixGroupVarClusterDesc)])) == length(unique(data_used()$id)),
-          "this variable can't be used as group variable because some individuals has more than 1 modality for this variable"
-        )
-      )
+      checkGroupVariable(data_used(), input$choixGroupVarClusterDesc)
+
       data <- data_with_group_var()
       data <- unique(data[, c("id", "res_class_cluster", input$choixGroupVarClusterDesc)])
       if (input$typeVarGroup %in% c("as.factor", "as.integer")) {
@@ -2146,12 +1881,7 @@ shinyServer(function(input, output, session) {
   ## Description with qualitative group variable by cluster (Proportions and profiles table)
   output$tableGroupVarFiniByCluster <- DT::renderDataTable(
     {
-      validate(
-        need(
-          nrow(unique(data_used()[, c("id", input$choixGroupVarClusterDesc)])) == length(unique(data_used()$id)),
-          "this variable can't be used as group variable because some individuals has more than 1 modality for this variable"
-        )
-      )
+      checkGroupVariable(data_used(), input$choixGroupVarClusterDesc)
 
       data <- data_with_group_var()
       data <- unique(data[, c("id", "res_class_cluster", input$choixGroupVarClusterDesc)])
@@ -2194,12 +1924,7 @@ shinyServer(function(input, output, session) {
   output$numVarGroupCluster <- DT::renderDataTable(
     {
       req(input$nbclust)
-      validate(
-        need(
-          nrow(unique(data_used()[, c("id", input$choixGroupVarClusterDesc)])) == length(unique(data_used()$id)),
-          "this variable can't be used as group variable because some individuals has more than 1 modality for this variable"
-        )
-      )
+      checkGroupVariable(data_used(), input$choixGroupVarClusterDesc)
 
       data <- data_with_group_var()
       data <- unique(data[, c("id", "res_class_cluster", input$choixGroupVarClusterDesc)])
@@ -2257,11 +1982,7 @@ shinyServer(function(input, output, session) {
     matrixInput(
       "groupProbability",
       "Probability to be in a group",
-      value = matrix(
-        rep(1 / input$nbComponent, input$nbComponent),
-        1,
-        input$nbComponent
-      ),
+      value = matrix(rep(1 / input$nbComponent, input$nbComponent), nrow = 1, ncol = input$nbComponent),
       class = "numeric",
       rows = list(names = FALSE),
       cols = list(names = FALSE)
@@ -2272,50 +1993,39 @@ shinyServer(function(input, output, session) {
   ### Transition Matrix
   output$listMatrix <- renderUI({
     t <- tagList()
-    t <-
-      tagList(
-        t,
-        matrixInput(
-          paste("transitionMatMix", 1),
-          paste("Transition matrix", 1),
-          value = matrix((1 - diag(input$nbStateMix)) /
-            (input$nbStateMix - 1),
-          input$nbStateMix,
-          input$nbStateMix,
-          dimnames = list(NULL, paste(
-            rep("state", input$nbStateMix), c(1:input$nbStateMix)
-          ))
-          ),
-          class = "numeric",
-          rows = list(names = FALSE),
-          cols = list(
-            names = TRUE, editableNames =
-              TRUE
-          )
-        )
+    t <- tagList(
+      t,
+      matrixInput(
+        paste("transitionMatMix", 1),
+        paste("Transition matrix", 1),
+        value = matrix(
+          (1 - diag(input$nbStateMix)) / (input$nbStateMix - 1),
+          nrow = input$nbStateMix,
+          ncol = input$nbStateMix,
+          dimnames = list(NULL, paste(rep("state", input$nbStateMix), c(1:input$nbStateMix)))
+        ),
+        class = "numeric",
+        rows = list(names = FALSE),
+        cols = list(names = TRUE, editableNames = TRUE)
       )
+    )
     if (input$nbComponent > 1) {
       for (i in 2:input$nbComponent) {
-        t <-
-          tagList(
-            t,
-            matrixInput(
-              paste("transitionMatMix", i),
-              paste("Transition matrix", i),
-              value = matrix(
-                (1 - diag(input$nbStateMix)) /
-                  (input$nbStateMix - 1),
-                input$nbStateMix,
-                input$nbStateMix
-              ),
-              class = "numeric",
-              rows = list(names = FALSE),
-              cols = list(
-                names = FALSE, editableNames =
-                  FALSE
-              )
-            )
+        t <- tagList(
+          t,
+          matrixInput(
+            paste("transitionMatMix", i),
+            paste("Transition matrix", i),
+            value = matrix(
+              (1 - diag(input$nbStateMix)) / (input$nbStateMix - 1),
+              nrow = input$nbStateMix,
+              ncol = input$nbStateMix
+            ),
+            class = "numeric",
+            rows = list(names = FALSE),
+            cols = list(names = FALSE, editableNames = FALSE)
           )
+        )
       }
     }
     t
@@ -2324,19 +2034,18 @@ shinyServer(function(input, output, session) {
   ### Exponential parameters
   output$listLambda <- renderUI({
     t <- tagList()
-    for (i in 1:input$nbComponent) {
-      t <-
-        tagList(
-          t,
-          matrixInput(
-            paste("sejourTimeParaMix", i),
-            paste("Exponential parameter of sejour time", i),
-            value = matrix(1, 1, input$nbStateMix),
-            class = "numeric",
-            rows = list(names = FALSE),
-            cols = list(names = FALSE)
-          )
+    for (i in seq_len(input$nbComponent)) {
+      t <- tagList(
+        t,
+        matrixInput(
+          paste("sejourTimeParaMix", i),
+          paste("Exponential parameter of sejour time", i),
+          value = matrix(1, 1, input$nbStateMix),
+          class = "numeric",
+          rows = list(names = FALSE),
+          cols = list(names = FALSE)
         )
+      )
     }
     t
   })
@@ -2344,23 +2053,18 @@ shinyServer(function(input, output, session) {
   ### Initial Law
   output$listInitialLaw <- renderUI({
     t <- tagList()
-    for (i in 1:input$nbComponent) {
-      t <-
-        tagList(
-          t,
-          matrixInput(
-            paste("initialLawMix", i),
-            paste("Initial law", i),
-            value = matrix(
-              rep(1 / input$nbStateMix, input$nbStateMix),
-              1,
-              input$nbStateMix
-            ),
-            class = "numeric",
-            rows = list(names = FALSE),
-            cols = list(names = FALSE)
-          )
+    for (i in seq_len(input$nbComponent)) {
+      t <- tagList(
+        t,
+        matrixInput(
+          paste("initialLawMix", i),
+          paste("Initial law", i),
+          value = matrix(rep(1 / input$nbStateMix, input$nbStateMix), nrow = 1, ncol = input$nbStateMix),
+          class = "numeric",
+          rows = list(names = FALSE),
+          cols = list(names = FALSE)
         )
+      )
     }
     t
   })
@@ -2370,38 +2074,35 @@ shinyServer(function(input, output, session) {
   mixModelData <- reactive({
     input$SimulateMixtureModel
     isolate({
-      p <-
-        sample(
-          c(1:input$nbComponent),
-          input$nbSimuMix,
-          replace = TRUE,
-          prob = as.vector(input$groupProbability)
-        )
+      p <- sample(
+        seq_len(input$nbComponent),
+        input$nbSimuMix,
+        replace = TRUE,
+        prob = as.vector(input$groupProbability)
+      )
       r <- table(p)
       resData <- data.frame()
-      d <-
-        generate_Markov(
-          r[1],
-          input$nbStateMix,
-          input[[paste("transitionMatMix", 1)]],
-          as.vector(input[[paste("sejourTimeParaMix", 1)]]),
-          as.vector(input[[paste("initialLawMix", 1)]]),
-          input$TmaxMix,
-          colnames(input[[paste("transitionMatMix", 1)]])
-        )
+      d <- generate_Markov(
+        r[1],
+        input$nbStateMix,
+        input[[paste("transitionMatMix", 1)]],
+        as.vector(input[[paste("sejourTimeParaMix", 1)]]),
+        as.vector(input[[paste("initialLawMix", 1)]]),
+        input$TmaxMix,
+        colnames(input[[paste("transitionMatMix", 1)]])
+      )
       d <- cbind.data.frame(d, Component = 1)
       resData <- d
       for (i in 2:input$nbComponent) {
-        d <-
-          generate_Markov(
-            r[i],
-            input$nbStateMix,
-            input[[paste("transitionMatMix", i)]],
-            as.vector(input[[paste("sejourTimeParaMix", i)]]),
-            as.vector(input[[paste("initialLawMix", i)]]),
-            input$TmaxMix,
-            colnames(input[[paste("transitionMatMix", 1)]])
-          )
+        d <- generate_Markov(
+          r[i],
+          input$nbStateMix,
+          input[[paste("transitionMatMix", i)]],
+          as.vector(input[[paste("sejourTimeParaMix", i)]]),
+          as.vector(input[[paste("initialLawMix", i)]]),
+          input$TmaxMix,
+          colnames(input[[paste("transitionMatMix", 1)]])
+        )
         d <- cbind.data.frame(d, Component = i)
         d$id <- d$id + max(resData$id)
         resData <- rbind(resData, d)

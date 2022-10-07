@@ -196,7 +196,7 @@ ui <- dashboardPage(
                 selected = "All"
               ),
               conditionalPanel("input.choixParaGroupeVisualize=='byGroup'", uiOutput("groupVarVisualize")),
-              actionButton("modPlotData", "Update plot of data"),
+              actionButton("modPlotData", "Update plot"),
               downloadButton("downloadPlotTraj", "Download Plot")
             ),
             box(
