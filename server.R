@@ -73,9 +73,9 @@ shinyServer(function(input, output, session) {
         maxT <- data %>%
           group_by(id) %>%
           filter(time == max(time, na.rm = TRUE))
-        if (input$upper == "" & input$lower == "") {
+        if ((input$upper == "") & (input$lower == "")) {
           idToKeep <- minT$id
-        } else if (input$upper == "" & !is.na(input$lower)) {
+        } else if ((input$upper == "") & !is.na(input$lower)) {
           tryCatch(
             {
               lower <- as.double(input$lower)
@@ -85,7 +85,7 @@ shinyServer(function(input, output, session) {
             }
           )
           idToKeep <- minT[minT$time <= lower, "id"]$id
-        } else if (!is.na(input$upper) & input$lower == "") {
+        } else if (!is.na(input$upper) & (input$lower == "")) {
           tryCatch(
             {
               upper <- as.double(input$upper)
@@ -120,7 +120,7 @@ shinyServer(function(input, output, session) {
         } else if (!is.na(input$more) & is.na(input$less)) {
           idToKeep <- names(nJump[nJump >= input$more])
         } else {
-          idToKeep <- names(nJump[nJump >= input$more & nJump <= input$less])
+          idToKeep <- names(nJump[(nJump >= input$more) & (nJump <= input$less)])
         }
         data <- data[data$id %in% idToKeep, ]
       }
@@ -128,7 +128,8 @@ shinyServer(function(input, output, session) {
       ## Filter by percentage
       if (input$filterChoicePercentage == "2") {
         idInd <- sort(unique(data$id))
-        idToKeep <- idInd[1:floor(length(idInd) * input$nb_ind / 100)]
+        set.seed(42)
+        idToKeep <- sample(idInd, floor(length(idInd) * input$nb_ind / 100), replace = FALSE)
         data <- data[data$id %in% idToKeep, ]
       }
     })
