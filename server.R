@@ -809,8 +809,7 @@ shinyServer(function(input, output, session) {
 
     plot_output_list <- lapply(mod, function(par) {
       plotname <- paste("nJumpMat", par, sep = "_")
-      nInd <-
-        nrow(unique((data_used()[data_used()[, input$groupVariableMarkov] == par, c("id", input$groupVariableMarkov)])))
+      nInd <- nrow(unique((data_used()[data_used()[, input$groupVariableMarkov] == par, c("id", input$groupVariableMarkov)])))
       column(6, box(
         width = 12, title = paste("Group: ", par, "(n:", nInd, ")"),
         status = "danger", solidHeader = TRUE,
@@ -829,8 +828,7 @@ shinyServer(function(input, output, session) {
 
     d <- data.frame(matrix(ncol = 4, nrow = 0))
     for (par in mod) {
-      pt <-
-        estimate_pt(data_used()[data_used()[, input$groupVariableMarkov] == par, c("id", "time", "state")])
+      pt <- estimate_pt(data_used()[data_used()[, input$groupVariableMarkov] == par, c("id", "time", "state")])
       d <- rbind.data.frame(
         d,
         data.frame(
@@ -1001,12 +999,10 @@ shinyServer(function(input, output, session) {
   eigenvalues <- reactive({
     vpselection <- which(round(fmca()$eigenvalues, 4) > 0)
     vp <- cbind.data.frame(
-      eigenvalues = round(fmca()$eigenvalues[vpselection], 4),
-      "Percentage of variance" = round(fmca()$eigenvalues[vpselection] /
-        sum(fmca()$eigenvalues[vpselection]) * 100, 2),
+      "eigenvalues" = round(fmca()$eigenvalues[vpselection], 4),
+      "Percentage of variance" = round(fmca()$eigenvalues[vpselection] / sum(fmca()$eigenvalues[vpselection]) * 100, 2),
       "Cumulative percentage of variance" = round(
-        cumsum(fmca()$eigenvalues[vpselection]) / sum(fmca()$eigenvalues[vpselection]) *
-          100,
+        cumsum(fmca()$eigenvalues[vpselection]) / sum(fmca()$eigenvalues[vpselection]) * 100,
         2
       )
     )
@@ -1087,11 +1083,9 @@ shinyServer(function(input, output, session) {
   output$planfact <- renderPlotly({
     req(input$choix_dim1, input$choix_dim2)
     if (input$groupVariableFactorialPlan == "NONE") {
-      plotComponent(fmca(),
-        comp = c(
-          as.numeric(input$choix_dim1),
-          as.numeric(input$choix_dim2)
-        ),
+      plotComponent(
+        fmca(),
+        comp = c(as.numeric(input$choix_dim1), as.numeric(input$choix_dim2)),
         addNames = FALSE
       )
     } else {
@@ -1244,12 +1238,8 @@ shinyServer(function(input, output, session) {
       minpc2 <- names(dim2SortIncre[1:ceiling(n * input$extremComp2 / 100 / 2)])
       maxpc2 <- names(dim2SortDecre[1:ceiling(n * input$extremComp2 / 100 / 2)])
     }
-    list(
-      minpc1 = minpc1,
-      maxpc1 = maxpc1,
-      minpc2 = minpc2,
-      maxpc2 = maxpc2
-    )
+
+    list(minpc1 = minpc1, maxpc1 = maxpc1, minpc2 = minpc2, maxpc2 = maxpc2)
   })
 
   ## Plot of extreme individuals on factorial plan
@@ -1257,14 +1247,9 @@ shinyServer(function(input, output, session) {
     req(input$choix_dim2Extrem, input$choix_dim1Extrem)
     ids <- unique(data_CFDA()$id)
     group <- factor(
-        rep("Not extreme", length(ids)),
-        levels = c(
-          "Extreme on axis 2",
-          "Extreme on axis 1",
-          "Not extreme",
-          "Extreme on both axis"
-        )
-      )
+      rep("Not extreme", length(ids)),
+      levels = c("Extreme on axis 2", "Extreme on axis 1", "Not extreme", "Extreme on both axis")
+    )
     group[ids %in% extremIndividuals()$minpc1] <- "Extreme on axis 1"
     group[ids %in% extremIndividuals()$maxpc1] <- "Extreme on axis 1"
     group[ids %in% extremIndividuals()$minpc2] <- "Extreme on axis 2"
@@ -1287,44 +1272,24 @@ shinyServer(function(input, output, session) {
   ## plot of trajectories of extreme individuals 1
   plotDataExtremAxe1 <- reactive({
     validate(need(input$extremComp1 > 0, "No extreme individuals selected"))
-    ids <- unique(data_CFDA()$id)
-    group <- factor(rep(NA, length(ids)), levels = c("Lowest component values", "Highest component values"))
-    group[ids %in% extremIndividuals()$minpc1] <- "Lowest component values"
-    group[ids %in% extremIndividuals()$maxpc1] <- "Highest component values"
-    plotData(
-      data_CFDA(),
-      group = group,
-      addBorder = FALSE,
-      addId = FALSE,
-      col = color_data_CFDA()
-    ) + labs(title = paste("Extreme individuals on component", input$choix_dim1))
+    plotExtreme(data_CFDA(), extremIndividuals()$minpc1, extremIndividuals()$maxpc1, input$choix_dim1, color_data_CFDA())
   })
 
   ## plot of trajectories of extreme individuals 1
   output$plotDataExtremAxe1 <- renderPlot({
-    validate(need(input$extremComp1 > 0, "no extreme individuals selected"))
+    validate(need(input$extremComp1 > 0, "No extreme individuals selected"))
     plotDataExtremAxe1()
   })
 
   ## plot of trajectories of extreme individuals 2
   plotDataExtremAxe2 <- reactive({
-    validate(need(input$choix_dim2Extrem > 0, "no extreme individuals selected"))
-    ids <- unique(data_CFDA()$id)
-    group <- actor(rep(NA, length(ids)), levels = c("Lowest component values", "Highest component values"))
-    group[ids %in% extremIndividuals()$minpc2] <- "Lowest component values"
-    group[ids %in% extremIndividuals()$maxpc2] <- "Highest component values"
-    plotData(
-      data_CFDA(),
-      group = group,
-      addBorder = FALSE,
-      addId = FALSE,
-      col = color_data_CFDA()
-    ) + labs(title = paste("Extreme individuals on component", input$choix_dim2))
+    validate(need(input$choix_dim2Extrem > 0, "No extreme individuals selected"))
+    plotExtreme(data_CFDA(), extremIndividuals()$minpc2, extremIndividuals()$maxpc2, input$choix_dim2, color_data_CFDA())
   })
 
   ## plot of trajectories of extreme individuals 2
   output$plotDataExtremAxe2 <- renderPlot({
-    validate(need(input$choix_dim2Extrem > 0, "no extrem individuals selected"))
+    validate(need(input$choix_dim2Extrem > 0, "No extrem individuals selected"))
     plotDataExtremAxe2()
   })
 
@@ -1551,10 +1516,7 @@ shinyServer(function(input, output, session) {
   ## frequencies table of number of jumps by clusters
   output$freqJumpByCluster <- DT::renderDataTable(
     {
-      jump <- data.frame(
-        id = names(nJump_data_CFDA()),
-        jump = as.vector(nJump_data_CFDA())
-      )
+      jump <- data.frame(id = names(nJump_data_CFDA()), jump = as.vector(nJump_data_CFDA()))
       group <- cbind.data.frame(id = names(class()), group = as.vector(class()))
       jumpMerge <- merge(jump, group, by = "id")
       t <- table(jumpMerge$group, jumpMerge$jump)
@@ -1717,11 +1679,10 @@ shinyServer(function(input, output, session) {
           mark <- estimate_Markov(data[, c("id", "state", "time")])
           r <- color_data_CFDA()
 
-          output[[paste("graphTransitionCluster", par, sep = "_")]] <-
-            renderPlot({
-              r <- r[names(r) %in% colnames(mark$P)]
-              plot(mark, box.col = r)
-            })
+          output[[paste("graphTransitionCluster", par, sep = "_")]] <- renderPlot({
+            r <- r[names(r) %in% colnames(mark$P)]
+            plot(mark, box.col = r)
+          })
           output[[paste("matTransitionCluster", par, sep = "_")]] <- renderPrint(round(mark$P, 3))
           output[[paste("nJumpMatCluster", par, sep = "_")]] <- renderPrint(statetable(data))
           output[[paste("expoLawCluster", par, sep = "_")]] <- renderPrint(round(mark$lambda, 3))
@@ -1829,13 +1790,12 @@ shinyServer(function(input, output, session) {
       paste("resClu.RData")
     },
     content = function(file) {
-      results_clustering <-
-        list(
-          hc = hc(),
-          data = data_with_group_var(),
-          cluster = class(),
-          dataByCluster = data_by_cluster()
-        )
+      results_clustering <- list(
+        hc = hc(),
+        data = data_with_group_var(),
+        cluster = class(),
+        dataByCluster = data_by_cluster()
+      )
       save(results_clustering, file = file)
     }
   )
@@ -1977,9 +1937,9 @@ shinyServer(function(input, output, session) {
   )
 
 
-  ###########################
+  ############################
   ## 6.Simulate markov chain #
-  ###########################
+  ############################
 
   ### Group Probability
   output$probabilityGp <- renderUI({
@@ -2133,12 +2093,6 @@ shinyServer(function(input, output, session) {
   ## Trajectories plot
   output$trajSimulatedMix <- renderPlot({
     gp <- mixModelData() %>% distinct(id, .keep_all = TRUE)
-    plotData(
-      mixModelData()[, -4],
-      group = gp$Component,
-      addId = FALSE,
-      addBorder = FALSE,
-      sort = TRUE
-    )
+    plotData(mixModelData()[, -4], group = gp$Component, addId = FALSE, addBorder = FALSE, sort = TRUE)
   })
 })
