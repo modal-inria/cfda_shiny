@@ -1,29 +1,5 @@
-## maximum number of modalities for a variable to be considered as a categorical group variable
-## (for the plot and the table by group in descriptive statistics and estimation of markov chain parts)
-MAXMOD <- 12
-
 
 shinyServer(function(input, output, session) {
-
-  # check that the number of modality does neot exceed the limit
-  checkNumberOfModality <- function(nModality, maxNModality = MAXMOD) {
-    validate(
-      need(
-        nModality <= maxNModality,
-        paste0("This variable has too many modalities (", nModality, "), the limit is ", maxNModality, ".")
-      )
-    )
-  }
-
-  # check that the selected group variable has not more than 1 modality per individual
-  checkGroupVariable <- function(data, groupVariableName) {
-    validate(
-      need(
-        nrow(unique(data[, c("id", groupVariableName)])) == length(unique(data$id)),
-        "This variable can't be used as group variable because some individuals has more than 1 modality for this variable."
-      )
-    )
-  }
 
   ###################
   # 1. Import data ##
