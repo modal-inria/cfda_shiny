@@ -1996,38 +1996,26 @@ shinyServer(function(input, output, session) {
   mixModelData <- reactive({
     input$SimulateMixtureModel
     isolate({
-      p <- sample(
-        seq_len(input$nbComponent),
-        input$nbSimuMix,
-        replace = TRUE,
-        prob = as.vector(input$groupProbability)
-      )
-      r <- table(p)
+      p <- sample(seq_len(input$nbComponent), input$nbSimuMix, replace = TRUE, prob = as.vector(input$groupProbability))
       resData <- data.frame()
-      d <- generate_Markov(
-        r[1],
-        input$nbStateMix,
-        input[[paste("transitionMatMix", 1)]],
-        as.vector(input[[paste("sejourTimeParaMix", 1)]]),
-        as.vector(input[[paste("initialLawMix", 1)]]),
-        input$TmaxMix,
-        colnames(input[[paste("transitionMatMix", 1)]])
-      )
-      d <- cbind.data.frame(d, Component = 1)
-      resData <- d
-      for (i in 2:input$nbComponent) {
-        d <- generate_Markov(
-          r[i],
-          input$nbStateMix,
-          input[[paste("transitionMatMix", i)]],
-          as.vector(input[[paste("sejourTimeParaMix", i)]]),
-          as.vector(input[[paste("initialLawMix", i)]]),
-          input$TmaxMix,
-          colnames(input[[paste("transitionMatMix", 1)]])
-        )
-        d <- cbind.data.frame(d, Component = i)
-        d$id <- d$id + max(resData$id)
-        resData <- rbind(resData, d)
+      lastId <- 0
+      for (i in seq_len(input$nbComponent)) {
+        nComponentI <- sum(p == i)
+        if (nComponentI > 0) {
+          d <- generate_Markov(
+            nComponentI,
+            input$nbStateMix,
+            input[[paste("transitionMatMix", i)]],
+            as.vector(input[[paste("sejourTimeParaMix", i)]]),
+            as.vector(input[[paste("initialLawMix", i)]]),
+            input$TmaxMix,
+            colnames(input[[paste("transitionMatMix", 1)]])
+          )
+          d <- cbind.data.frame(d, Component = i)
+          d$id <- d$id + lastId
+          resData <- rbind(resData, d)
+          lastId <- resData$id[length(resData$id)]
+        }
       }
       resData
     })
