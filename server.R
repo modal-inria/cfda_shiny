@@ -408,7 +408,6 @@ shinyServer(function(input, output, session) {
         detail = "Please wait until the end",
         value = 0,
         {
-          incProgress(1 / 4)
           if (input$choixParaGroupeStatistics == "byGroup") {
             data <- data_used()[data_used()[, input$groupVariableStatistics] == par, ]
             if (input$choixGraphiqueStats == "summary") {
@@ -417,6 +416,7 @@ shinyServer(function(input, output, session) {
               })
             }
           }
+          incProgress(1 / length(mod))
         }
       )
     })
@@ -728,7 +728,6 @@ shinyServer(function(input, output, session) {
         detail = "Please wait until the end",
         value = 0,
         {
-          incProgress(1 / 4)
           if (input$choixParaGroupeMarkov == "byGroup") {
             data <- data_used()[data_used()[, input$groupVariableMarkov] == par, ]
             mark <- estimate_Markov(data[, c("id", "state", "time")])
@@ -753,6 +752,7 @@ shinyServer(function(input, output, session) {
                 round(mark$lambda, 3)
               })
           }
+          incProgress(1 / length(mod))
         }
       )
     })
@@ -1654,7 +1654,6 @@ shinyServer(function(input, output, session) {
         detail = "Please wait until the end",
         value = 0,
         {
-          incProgress(1 / 4)
           idToKeep <- names(class()[class() == par])
           data <- data_CFDA()[data_CFDA()$id %in% idToKeep, ]
           mark <- estimate_Markov(data[, c("id", "state", "time")])
@@ -1667,6 +1666,8 @@ shinyServer(function(input, output, session) {
           output[[paste("matTransitionCluster", par, sep = "_")]] <- renderPrint(round(mark$P, 3))
           output[[paste("nJumpMatCluster", par, sep = "_")]] <- renderPrint(statetable(data))
           output[[paste("expoLawCluster", par, sep = "_")]] <- renderPrint(round(mark$lambda, 3))
+
+          incProgress(1 / input$nbclust)
         }
       )
     })
