@@ -43,8 +43,8 @@ shinyServer(function(input, output, session) {
     file <- input$file1
     ext <- tools::file_ext(file$datapath)
     req(file)
-    validate(need(ext == "csv", "Please upload a csv file"))
-    data <- read.csv(file$datapath, header = TRUE, sep = input$sep, dec = input$dec)
+    validate(need(ext %in% c("csv", "txt"), "Please upload a csv or txt file"))
+    data <- read.table(file$datapath, header = TRUE, sep = input$sep, dec = input$dec)
   })
 
   ## Check if a file has been import

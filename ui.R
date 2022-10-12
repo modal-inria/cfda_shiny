@@ -61,7 +61,7 @@ ui <- dashboardPage(
                 "file1",
                 "Import file (The file must have at least 3 columns named: id, time and state)",
                 multiple = FALSE,
-                accept = c("text/csv", ".csv")
+                accept = c("text/csv", ".csv", ".txt", "text/plain")
               ),
               radioGroupButtons(
                 inputId = "sep",
