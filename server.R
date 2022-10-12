@@ -1031,27 +1031,19 @@ shinyServer(function(input, output, session) {
         paste("end time must be between greather than", min)
       )
     )
-    if (input$cumulative) {
-      g <-
-        ggplot(cbind.data.frame(x = seq_len(nrow(eigenvalues())), y = eigenvalues()[, 3])) +
-        ggtitle("Cumulative eigenvalues plot") +
-        theme(plot.title = element_text(hjust = 0.5)) +
-        scale_x_continuous(breaks = seq_len(nrow(eigenvalues()))) +
-        geom_col(fill = "blue") +
-        aes(x = x, y = y) +
-        xlab("Component") +
-        ylab("Percentage of variance")
-    } else {
-      g <-
-        ggplot(cbind.data.frame(x = seq_len(nrow(eigenvalues())), y = eigenvalues()[, 2])) +
-        ggtitle("Eigenvalues plot") +
-        theme(plot.title = element_text(hjust = 0.5)) +
-        scale_x_continuous(breaks = seq_len(nrow(eigenvalues()))) +
-        geom_col(fill = "blue") +
-        aes(x = x, y = y) +
-        xlab("Component") +
-        ylab("Percentage of variance")
-    }
+
+    i <- ifelse(input$cumulative, 3, 2)
+    mainTitle <- ifelse(input$cumulative, "Cumulative eigenvalues plot", "Eigenvalues plot")
+
+    g <- ggplot(cbind.data.frame(x = seq_len(nrow(eigenvalues())), y = eigenvalues()[, i])) +
+      ggtitle(mainTitle) +
+      theme(plot.title = element_text(hjust = 0.5)) +
+      scale_x_continuous(breaks = seq_len(nrow(eigenvalues()))) +
+      geom_col(fill = "blue") +
+      aes(x = x, y = y) +
+      xlab("Component") +
+      ylab("Percentage of variance")
+
     g
   })
 
@@ -1118,15 +1110,8 @@ shinyServer(function(input, output, session) {
   ## Optimal encoding plot (dimension 1 selected)
   optimalEncodingPlot1 <- reactive({
     req(input$choix_dim1)
-    if (input$addCI) {
-      plot(fmca(), harm = as.numeric(input$choix_dim1), addCI = TRUE) +
-        ylab("a_x(t)") +
-        scale_fill_manual(values = color_data_CFDA())
-    } else {
-      plot(fmca(), harm = as.numeric(input$choix_dim1), addCI = FALSE) +
-        ylab("a_x(t)") +
-        scale_color_manual(values = color_data_CFDA())
-    }
+    plot(fmca(), harm = as.numeric(input$choix_dim1), addCI = input$addCI, col = color_data_CFDA()) +
+      ylab("a_x(t)")
   })
 
   ## plot of optimal encoding plot (dimension 1 selected)
@@ -1724,20 +1709,14 @@ shinyServer(function(input, output, session) {
           )
         )
       })
-    } else if (input$choixStatsMarkovCluster == "jump") {
-      plot_output_list <- lapply(c(1:input$nbclust), function(par) {
-        plotname <- paste("nJumpMatCluster", par, sep = "_")
-        column(
-          4,
-          box(
-            width = 12, status = "danger", solidHeader = TRUE, title = paste("Group:", par, "(n:", t[par], ")"),
-            verbatimTextOutput(plotname)
-          )
-        )
-      })
     } else {
       plot_output_list <- lapply(c(1:input$nbclust), function(par) {
-        plotname <- paste("expoLawCluster", par, sep = "_")
+        plotname <- paste(
+          ifelse(input$choixStatsMarkovCluster == "jump", "nJumpMatCluster", "expoLawCluster"),
+          par,
+          sep = "_"
+        )
+
         column(
           4,
           box(
