@@ -320,19 +320,20 @@ shinyServer(function(input, output, session) {
       detail = "Please wait until the end",
       value = 0,
       {
-        incProgress(1 / 4)
+        incProgress(1 / 2)
         if (input$choixGraphiqueStats == "jump") {
-          jump_gp <- data.frame(jump = as.vector(nJump()))
-          p <- ggplot(data.frame(jump_gp), aes(x = jump)) +
-            labs(x = "Number of jump", y = "Frequency", title = "Distribution of number of jumps") +
-            geom_bar(fill = "lightblue", color = "black")
+            p <- hist(nJump()) +
+              labs(title = "Distribution of number of jumps")
         } else if (input$choixGraphiqueStats == "duration") {
-          p <- hist(duration()) + labs(title = "Distribution of duration of trajectories")
+          p <- hist(duration()) +
+            labs(title = "Distribution of duration of trajectories")
         } else if (input$choixGraphiqueStats == "timeState") {
-          p <- boxplot(time_spent()) +
-            labs(title = "Distribution of time spent by state") +
-            scale_fill_manual(values = eval(parse(text = colorOfState())))
+          p <- boxplot(time_spent(), col = eval(parse(text = colorOfState()))) +
+            labs(title = "Distribution of time spent by state")
+        } else {
+          p <- plotly_empty(type = "scatter", mode = "markers")
         }
+        incProgress(1 / 2)
       }
     )
     p
@@ -1122,15 +1123,8 @@ shinyServer(function(input, output, session) {
   ## Optimal encoding plot (dimension 2 selected)
   optimalEncodingPlot2 <- reactive({
     req(input$choix_dim2)
-    if (input$addCI) {
-      plot(fmca(), harm = as.numeric(input$choix_dim2), addCI = TRUE) +
-        ylab("a_x(t)") +
-        scale_fill_manual(values = color_data_CFDA())
-    } else {
-      plot(fmca(), harm = as.numeric(input$choix_dim2), addCI = FALSE) +
-        ylab("a_x(t)") +
-        scale_color_manual(values = color_data_CFDA())
-    }
+    plot(fmca(), harm = as.numeric(input$choix_dim2), addCI = input$addCI, col = color_data_CFDA()) +
+      ylab("a_x(t)")
   })
 
   ## plot of optimal encoding plot (dimension 1 selected)
