@@ -246,3 +246,14 @@ tableOfStatsCluster <- function(data, resStatsAll, stats, class, nomState, nbClu
     return(d)
   }
 }
+
+# plot extreme individuals on factorial plan
+plotExtreme <- function(data, min_pc, max_pc, dimNumber, col) {
+  ids <- unique(data$id)
+  group <- factor(rep(NA, length(ids)), levels = c("Lowest component values", "Highest component values"))
+  group[ids %in% min_pc] <- "Lowest component values"
+  group[ids %in% max_pc] <- "Highest component values"
+
+  plotData(data, group = group, addBorder = FALSE, addId = FALSE, col = col) +
+    labs(title = paste("Extreme individuals on component", dimNumber))
+}
