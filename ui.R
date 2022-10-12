@@ -440,19 +440,16 @@ ui <- dashboardPage(
                 )
               ),
               tabPanel(
-                ## Transition matrix
                 "Transition Matrix",
                 conditionalPanel("input.choixParaGroupeMarkov=='byGroup'", fluidRow(uiOutput("transMatByGroup"))),
                 conditionalPanel("input.choixParaGroupeMarkov=='All'", verbatimTextOutput("transMatAll"))
               ),
               tabPanel(
-                ## Number of state change
                 "Number of state changes",
                 conditionalPanel("input.choixParaGroupeMarkov=='byGroup'", fluidRow(uiOutput("njumpMarkovByGroup"))),
                 conditionalPanel("input.choixParaGroupeMarkov=='All'", verbatimTextOutput("njumpMarkovAll"))
               ),
               tabPanel(
-                ## Probability to be in a state
                 "Probability to be in a state",
                 conditionalPanel(
                   "input.choixParaGroupeMarkov=='byGroup'",

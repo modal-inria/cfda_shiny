@@ -1365,7 +1365,7 @@ shinyServer(function(input, output, session) {
     d <- as.data.frame(table(class()))
     prop <- round(prop.table(table(class())), 4) * 100
     d <- cbind.data.frame(d, prop = as.vector(prop))
-    row.names(d) <- paste("cluster", 1:input$nbclust)
+    row.names(d) <- paste("Cluster", 1:input$nbclust)
     d[, 2:3]
   })
 
@@ -1524,7 +1524,7 @@ shinyServer(function(input, output, session) {
       row_som <- apply(t, 1, sum)
       col_som <- apply(t, 2, sum)
       res <- rbind.data.frame(cbind.data.frame(t, total = row_som), total = c(col_som, sum(col_som)))
-      row.names(res) <- c(paste("cluster", 1:input$nbclust), "total")
+      row.names(res) <- c(paste("Cluster", 1:input$nbclust), "total")
       res
     },
     extensions = c("FixedColumns", "Buttons"),
@@ -1550,13 +1550,13 @@ shinyServer(function(input, output, session) {
         col_som <- apply(t, 2, sum)
         res <- rbind.data.frame(cbind.data.frame(t, total = row_som), total = c(col_som, sum(col_som)))
         res <- round(res, 4) * 100
-        row.names(res) <- c(paste("cluster", 1:input$nbclust), "total")
+        row.names(res) <- c(paste("Cluster", 1:input$nbclust), "Total")
       } else if (input$tableChoiceCluster == "row") {
         res <- as.data.frame.matrix(round(lprop(t), 2))
-        row.names(res) <- c(paste("cluster", 1:input$nbclust), "Ensemble")
+        row.names(res) <- c(paste("Cluster", 1:input$nbclust), "Ensemble")
       } else {
         res <- as.data.frame.matrix(round(cprop(t), 2))
-        row.names(res) <- c(paste("cluster", 1:input$nbclust), "total")
+        row.names(res) <- c(paste("Cluster", 1:input$nbclust), "Total")
       }
       res
     },
@@ -1763,7 +1763,7 @@ shinyServer(function(input, output, session) {
         dataClust
       }
     })
-    names(ldata) <- paste0("cluster", 1:input$nbclust)
+    names(ldata) <- paste0("Cluster", 1:input$nbclust)
     ldata
   })
 
@@ -1825,7 +1825,7 @@ shinyServer(function(input, output, session) {
         row_som <- apply(t, 1, sum)
         col_som <- apply(t, 2, sum)
         freq_table <- rbind.data.frame(cbind.data.frame(t, total = row_som), total = c(col_som, sum(col_som)))
-        row.names(freq_table) <- c(paste("Cluster", 1:input$nbclust), "total")
+        row.names(freq_table) <- c(paste("Cluster", 1:input$nbclust), "Total")
         freq_table
       }
     },
@@ -1899,29 +1899,11 @@ shinyServer(function(input, output, session) {
         for (i in 1:input$nbclust) {
           dt <- data[data$res_class_cluster == i, ]
           var <- dt[, input$choixGroupVarClusterDesc]
-          q <- quantile(var)
-          d <- rbind.data.frame(d, data.frame(
-            Mean = round(mean(var), 2),
-            Median = round(q[3], 2),
-            Q1 = round(q[2], 2),
-            Q3 = round(q[4], 2),
-            Min = round(q[1], 2),
-            Max = round(q[5], 2),
-            Sd = round(sd(var), 2),
-            Number = length(var)
-          ))
+          dNew <- computeStatsDataFrame(var, addNumber = TRUE)
+          d <- rbind.data.frame(d, dNew)
         }
-        q <- quantile(data[, input$choixGroupVarClusterDesc])
-        d <- rbind.data.frame(d, data.frame(
-          Mean = round(mean(data[, input$choixGroupVarClusterDesc]), 2),
-          Median = round(q[3], 2),
-          Q1 = round(q[2], 2),
-          Q3 = round(q[4], 2),
-          Min = round(q[1], 2),
-          Max = round(q[5], 2),
-          Sd = round(sd(data[, input$choixGroupVarClusterDesc]), 2),
-          Number = length(data[, input$choixGroupVarClusterDesc])
-        ))
+        dNew <- computeStatsDataFrame(data[, input$choixGroupVarClusterDesc], addNumber = TRUE)
+        d <- rbind.data.frame(d, dNew)
         row.names(d) <- c(paste("Cluster", 1:input$nbclust), "All")
         d
       }
