@@ -39,6 +39,16 @@ if (!require("scales")) {
   library("scales")
 }
 
+# get the list of states
+getStates <- function(data) {
+  if (is.factor(data$state)) {
+    states <- levels(data$state)
+  } else {
+    states <- as.character(sort(unique(data$state)))
+  }
+
+  return(states)
+}
 
 # For a given variable get a 1-ow data.frame with Mean, Median, Q1, Q3, Min, Max, Sd (and Number)
 computeStatsDataFrame <- function(vector, addNumber = FALSE) {

@@ -917,11 +917,14 @@ shinyServer(function(input, output, session) {
     input$soumettre
     isolate({
       tmax <- as.double(input$tpsmax)
-      resume <- summary_cfd(data_used()[, c("id", "state", "time")])
-      minT <- resume$timeRange[1]
-      maxT <- resume$timeRange[2]
+      timeRange <- range(data_used()$time)
+      minT <- timeRange[1]
+
+      timeRangeInd <- do.call(rbind, tapply(data_used()$time, data_used()$id, range))
+      uniqueStart <- (length(unique(timeRangeInd[, 1])) == 1)
+
       validate(
-        need(resume$uniqueStart, "All individuals must have the same time start value"),
+        need(uniqueStart, "All individuals must have the same time start value"),
         need(tmax >= minT, paste("End time must be greater than", minT))
       )
       d <- cut_data(
@@ -965,24 +968,22 @@ shinyServer(function(input, output, session) {
           Sys.sleep(0.25)
           set.seed(42)
           tmax <- as.double(input$tpsmax)
-          resume <- summary_cfd(data_used()[, c("id", "state", "time")])
-          minT <- resume$timeRange[1]
-          maxT <- resume$timeRange[2]
+          minT <- min(data_used()$time) # ? data_cfda()
+          nInd <- length(unique(data_CFDA()$id))
+          timeRangeInd <- do.call(rbind, tapply(data_used()$time, data_used()$id, range)) # ? data_cfda()
+          uniqueStart <- (length(unique(timeRangeInd[, 1])) == 1)
           validate(
-            need(resume$uniqueStart, "All individuals must have the same time start value"),
+            need(uniqueStart, "All individuals must have the same time start value"),
             need(
-              summary_cfd(data_CFDA())$nInd > 1,
+              nInd > 1,
               "There is only one row or less with this end time please change the value"
             ),
             need(tmax >= minT, paste("End time must be greater than", minT))
           )
           if (input$typeBasis == "spline") {
-            basis <- create.bspline.basis(c(min(data_CFDA()[, "time"]), tmax),
-              nbasis = input$nbasis,
-              norder = input$norder
-            )
+            basis <- create.bspline.basis(c(minT, tmax), nbasis = input$nbasis, norder = input$norder)
           } else {
-            basis <- create.fourier.basis(c(min(data_CFDA()[, "time"]), tmax), nbasis = input$nbasis)
+            basis <- create.fourier.basis(c(minT, tmax), nbasis = input$nbasis)
           }
           fmca <- compute_optimal_encoding(data_CFDA(), basis)
           for (i in 3:15) {
@@ -1018,10 +1019,11 @@ shinyServer(function(input, output, session) {
   ## Plots of the eigen values
   output$valeurspropres <- renderPlotly({
     tmax <- as.double(input$tpsmax)
-    min <- summary_cfd(data_used()[, c("id", "state", "time")])$timeRange[1]
+    min <- min(data_used()$time) # ? data_cfda()
+    nInd <- length(unique(data_CFDA()$id))
     validate(
       need(
-        summary_cfd(data_CFDA())$nInd > 1,
+        nInd > 1,
         "There is only one row or less with this end time please change the value"
       ),
       need(
@@ -1056,7 +1058,7 @@ shinyServer(function(input, output, session) {
   ## Widget to choose dimension on Factorial plan part
   output$dim1 <- renderUI({
     input$soumettre
-    maxi <- isolate(input$nbasis * length(summary_cfd(data_CFDA()[, c("id", "state", "time")])$states))
+    maxi <- isolate(input$nbasis * length(getStates(data_CFDA())))
     selectInput(
       inputId = "choix_dim1",
       label = "Axis 1",
@@ -1069,7 +1071,7 @@ shinyServer(function(input, output, session) {
   ## Widget to choose dimension on Factorial plan part
   output$dim2 <- renderUI({
     input$soumettre
-    maxi <- isolate(input$nbasis * length(summary_cfd(data_CFDA()[, c("id", "state", "time")])$states))
+    maxi <- isolate(input$nbasis * length(getStates(data_CFDA())))
     selectInput(
       inputId = "choix_dim2",
       label = "Axis 2 ",
@@ -1158,7 +1160,7 @@ shinyServer(function(input, output, session) {
   ## Widget to choose dimension for extreme individuals
   output$dim1Extrem <- renderUI({
     input$soumettre
-    maxi <- isolate(input$nbasis * length(summary_cfd(data_CFDA()[, c("id", "state", "time")])$states))
+    maxi <- isolate(input$nbasis * length(getStates(data_CFDA())))
     selectInput(
       inputId = "choix_dim1Extrem",
       label = "Axis 1",
@@ -1171,7 +1173,7 @@ shinyServer(function(input, output, session) {
   ## Widget to choose dimension for extreme individuals
   output$dim2Extrem <- renderUI({
     input$soumettre
-    maxi <- isolate(input$nbasis * length(summary_cfd(data_CFDA()[, c("id", "state", "time")])$states))
+    maxi <- isolate(input$nbasis * length(getStates(data_CFDA())))
     selectInput(
       inputId = "choix_dim2Extrem",
       label = "Axis 2 ",
@@ -1372,7 +1374,7 @@ shinyServer(function(input, output, session) {
   ## widget to choose the number of component for clustering
   output$nb_comp <- renderUI({
     input$soumettre
-    maxi <- isolate(input$nbasis * length(summary_cfd(data_CFDA()[, c("id", "state", "time")])$states))
+    maxi <- isolate(input$nbasis * length(getStates(data_CFDA())))
     selectInput(
       inputId = "nbcomp",
       label = "Number of components for clustering",
