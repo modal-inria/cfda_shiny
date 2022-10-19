@@ -28,7 +28,7 @@ shinyServer(function(input, output, session) {
     return(is.null(input$file1$datapath))
   })
 
-  ## Create a output in UI for filetest
+  ## Create an output in UI for filetest
   outputOptions(output, "filetest", suspendWhenHidden = FALSE)
 
   ## filter data set
@@ -39,7 +39,7 @@ shinyServer(function(input, output, session) {
     }
     validate(need(is.numeric(data_import()[, "time"]), "time must be numeric, please choose correct decimal symbol"))
     data <- data_import()
-    input$applyMod
+    input$applyFilter
     isolate({
       ## Filter by length trajectories
       if (input$filterChoiceLength == "2") {

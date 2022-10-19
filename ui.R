@@ -155,7 +155,7 @@ ui <- dashboardPage(
                       )
                     )
                   ),
-                  actionButton("applyMod", "Apply")
+                  actionButton("applyFilter", "Apply")
                 )
               )
             )
