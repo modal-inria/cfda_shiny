@@ -106,15 +106,9 @@ ui <- dashboardPage(
                       ),
                       conditionalPanel(
                         "input.filterChoiceLength=='2'",
-                        textInput(
-                          "lower",
-                          "Indiduals observed between time",
-                          placeholder = "no space between digits and decimal separateur must be the dot"
-                        ),
-                        textInput(
-                          "upper",
-                          "and time:",
-                          placeholder = "no space between digits and decimal separateur must be the dot"
+                        tagList(
+                          numericInput("lower", "Individuals observed between time", value = NA),
+                          numericInput("upper", "and time", value = NA)
                         )
                       )
                     ),
@@ -496,13 +490,7 @@ ui <- dashboardPage(
                     width = 12,
                     status = "danger",
                     uiOutput("titleBoxFactorial"),
-                    tags$div(
-                      id = "inline",
-                      textInput(
-                        "tpsmax", "T:",
-                        placeholder = "no space between digits and decimal separator must be the dot"
-                      )
-                    ),
+                    tags$div(id = "inline", numericInput("tpsmax", "T:", value = NA)),
                     br(),
                     uiOutput("uiAbsorbedState"),
                     textInput("nameNAstate", "Name of the non observed state", value = "Not observable")
