@@ -52,40 +52,11 @@ shinyServer(function(input, output, session) {
         maxT <- data %>%
           group_by(id) %>%
           filter(time == max(time, na.rm = TRUE))
-        if ((input$upper == "") & (input$lower == "")) {
-          idToKeep <- minT$id
-        } else if ((input$upper == "") & !is.na(input$lower)) {
-          tryCatch(
-            {
-              lower <- as.double(input$lower)
-            },
-            error = function(cond) {
-              validate(need(FALSE, "Invalid time. Please check format."))
-            }
-          )
-          idToKeep <- minT[minT$time <= lower, "id"]$id
-        } else if (!is.na(input$upper) & (input$lower == "")) {
-          tryCatch(
-            {
-              upper <- as.double(input$upper)
-            },
-            error = function(cond) {
-              validate(need(FALSE, "Invalid time. Please check format."))
-            }
-          )
-          idToKeep <- maxT[maxT$time >= upper, "id"]$id
-        } else {
-          tryCatch(
-            {
-              upper <- as.double(input$upper)
-              lower <- as.double(input$lower)
-            },
-            error = function(cond) {
-              validate(need(FALSE, "Invalid time. Please check format."))
-            }
-          )
-          idToKeep <- intersect(minT[minT$time <= lower, "id"], maxT[maxT$time >= upper, "id"])$id
-        }
+
+        lower <- ifelse(is.na(input$lower), Inf, input$lower)
+        upper <- ifelse(is.na(input$upper), -Inf, input$upper)
+        idToKeep <- intersect(minT[minT$time <= lower, "id"], maxT[maxT$time >= upper, "id"])$id
+
         data <- data[data$id %in% idToKeep, ]
       }
 
@@ -142,17 +113,13 @@ shinyServer(function(input, output, session) {
   ## filter widget for number of jumps
   output$jumpInt <- renderUI({
     tagList(
-      numericInput("more", "Indiduals with more than ", min = 0, value = 0),
-      numericInput("less", "and less than", min = 0, value = max(nJump_import()), max = max(nJump_import()))
+      numericInput("more", "Individuals with more jumps than", min = 0, value = 0),
+      numericInput("less", "and less jumps than", min = 0, value = max(nJump_import()), max = max(nJump_import()))
     )
   })
 
   ## Number of jump of initial dataset
   nJump_import <- reactive({
-    validate(need(
-      is.numeric(data_import()[, "time"]),
-      "time must be numeric, please choose correct decimal symbol"
-    ))
     compute_number_jumps(data_import()[, c("id", "state", "time")], countDuplicated = FALSE)
   })
 
@@ -896,7 +863,7 @@ shinyServer(function(input, output, session) {
   data_CFDA <- reactive({
     input$soumettre
     isolate({
-      tmax <- as.double(input$tpsmax)
+      tmax <- input$tpsmax
       timeRange <- range(data_used()$time)
       minT <- timeRange[1]
 
