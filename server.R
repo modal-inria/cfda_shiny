@@ -21,6 +21,14 @@ shinyServer(function(input, output, session) {
     req(file)
     validate(need(ext %in% c("csv", "txt"), "Please upload a csv or txt file"))
     data <- read.table(file$datapath, header = TRUE, sep = input$sep, dec = input$dec)
+
+    missColNames <- !(c("id", "time", "state") %in% colnames(data))
+    if (any(missColNames)) {
+      validate("Error! Data must have exactly one column named 'id', one column named 'state' and one column name 'time'")
+    }
+    validate(need(is.numeric(data[, "time"]), "time must be numeric, please choose a correct decimal symbol"))
+
+    data
   })
 
   ## Check if a file has been import
@@ -33,11 +41,6 @@ shinyServer(function(input, output, session) {
 
   ## filter data set
   data_used <- reactive({
-    if ((sum(colnames(data_import()) %in% "id") != 1) | (sum(colnames(data_import()) %in% "time") != 1) | (
-      sum(colnames(data_import()) %in% "state") != 1)) {
-      validate("Error! data must have exactly one column named 'id', one column named 'state' and one column name 'time'")
-    }
-    validate(need(is.numeric(data_import()[, "time"]), "time must be numeric, please choose correct decimal symbol"))
     data <- data_import()
     input$applyFilter
     isolate({
